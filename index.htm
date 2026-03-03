@@ -10,7 +10,13 @@
     <style>
         body { background-color: #0f172a; color: #f1f5f9; }
         .drop-zone { border: 2px dashed #334155; transition: all 0.3s ease; background-color: #1e293b; }
-        .drop-zone.active { border-color: #3b82f6; background-color: #1e293b; }
+        /* Estilo quando um arquivo é arrastado sobre a zona */
+        .drop-zone.drag-over { 
+            border-color: #3b82f6; 
+            background-color: #1e293b; 
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+        }
         #loader { display: none; }
         .copy-feedback { animation: fadeInOut 1.5s ease-in-out forwards; pointer-events: none; }
         @keyframes fadeInOut {
@@ -38,7 +44,6 @@
 
         #confirmModal { display: none; }
 
-        /* Custom scrollbar for dark mode */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -192,7 +197,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             </div>
                             <p class="text-slate-200 font-bold text-sm">Upload de Registros</p>
-                            <p class="text-slate-500 text-[11px] mt-1">Excel ou CSV</p>
+                            <p class="text-slate-500 text-[11px] mt-1">Arraste aqui ou clique</p>
                         </div>
                     </div>
                 </div>
@@ -233,6 +238,31 @@
         let loadedFiles = [];
         let modalCallback = null;
         let lastProcessedData = []; 
+
+        // CONFIGURAÇÃO DE DRAG AND DROP
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }, false);
 
         function showConfirmModal(title, description, onConfirm, type = 'danger') {
             modalTitle.innerText = title;
@@ -399,7 +429,7 @@
         }
 
         async function handleFiles(files) {
-            if (files.length === 0) return;
+            if (!files || files.length === 0) return;
             
             for (const file of files) {
                 const existingFile = loadedFiles.find(f => f.name === file.name);
@@ -427,7 +457,7 @@
                 showLoader(true, "Processando...");
                 const rawData = await processFile(file);
                 if (rawData.length === 0) {
-                    showToast(`Arquivo ${file.name} inválido.`, "warning");
+                    showToast(`Arquivo ${file.name} inválido ou vazio.`, "warning");
                     showLoader(false);
                     continue;
                 }
