@@ -153,6 +153,14 @@
                 <div id="tableContainer" class="hidden bg-slate-800 rounded-xl shadow-sm border border-slate-700 overflow-hidden">
                     <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
                         <h2 class="text-sm font-bold text-slate-300">Relatório de Presença</h2>
+                        <button 
+                            id="exportExcelBtn" 
+                            onclick="exportToExcel()"
+                            class="flex items-center gap-2 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs font-bold rounded-lg transition shadow-md"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Exportar Excel
+                        </button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
@@ -238,6 +246,7 @@
         let loadedFiles = [];
         let modalCallback = null;
         let lastProcessedData = []; 
+        let currentFilteredData = []; // Armazena o que está filtrado para exportação
 
         // CONFIGURAÇÃO DE DRAG AND DROP
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -603,7 +612,7 @@
                 clearSearchBtn.classList.add('hidden');
             }
 
-            const filteredData = lastProcessedData.filter(item => {
+            currentFilteredData = lastProcessedData.filter(item => {
                 if (searchWords.length === 0) return true;
                 const itemNomeNorm = item.nomeCompleto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                 const itemIdStr = item.id.toLowerCase();
@@ -612,7 +621,7 @@
                 );
             });
 
-            renderTable(filteredData);
+            renderTable(currentFilteredData);
         }
 
         clearSearchBtn.onclick = () => {
@@ -657,6 +666,45 @@
 
             if (data.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-slate-500 italic">Nenhum resultado.</td></tr>`;
+            }
+        }
+
+        // FUNÇÃO DE EXPORTAÇÃO EXCEL
+        function exportToExcel() {
+            if (!currentFilteredData || currentFilteredData.length === 0) {
+                showToast("Não há dados para exportar", "warning");
+                return;
+            }
+
+            try {
+                // Prepara os dados: apenas ID e Nome Completo
+                const exportData = currentFilteredData.map(item => ({
+                    "ID Pessoal": item.id,
+                    "Nome Completo": item.nomeCompleto
+                }));
+
+                // Cria uma planilha
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                
+                // Ajusta largura das colunas
+                const wscols = [
+                    {wch: 15}, // ID Pessoal
+                    {wch: 40}  // Nome Completo
+                ];
+                worksheet['!cols'] = wscols;
+
+                // Cria o livro (workbook)
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Presença");
+
+                // Gera o arquivo e inicia o download
+                const dateStr = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(workbook, `relatorio_presenca_${dateStr}.xlsx`);
+                
+                showToast("Excel gerado com sucesso!", "success");
+            } catch (err) {
+                console.error("Erro ao exportar:", err);
+                showToast("Erro ao gerar arquivo Excel", "error");
             }
         }
 
