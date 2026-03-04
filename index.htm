@@ -16,15 +16,6 @@
             transform: scale(1.02);
             box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
         }
-        #loader { display: none; }
-        .copy-feedback { animation: fadeInOut 1.5s ease-in-out forwards; pointer-events: none; }
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateY(5px); }
-            20% { opacity: 1; transform: translateY(0); }
-            80% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-        [v-cloak] { display: none; }
         
         @media (min-width: 768px) {
             .app-grid {
@@ -41,27 +32,69 @@
             }
         }
 
-        #confirmModal { display: none; }
-
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        /* Estilo para barra de progresso */
         .progress-bar-container {
             width: 100%;
-            height: 6px;
+            height: 8px;
             background-color: #334155;
             border-radius: 10px;
             overflow: hidden;
-            margin-top: 10px;
+            margin-top: 15px;
         }
         .progress-bar-fill {
             height: 100%;
             background-color: #3b82f6;
             width: 0%;
-            transition: width 0.3s ease;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 22px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #334155;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px; width: 16px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #3b82f6; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        /* Estilos do Calendário */
+        .calendar-day {
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            border-radius: 6px;
+            cursor: default;
+        }
+        .day-active {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
         }
     </style>
 </head>
@@ -69,31 +102,12 @@
 
     <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
 
-    <!-- JANELA MODAL DE CONFIRMAÇÃO -->
-    <div id="confirmModal" class="fixed inset-0 z-[100] overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen p-4 text-center">
-            <div class="fixed inset-0 bg-black/70 transition-opacity"></div>
-            <div class="relative bg-slate-800 rounded-2xl p-6 shadow-2xl w-full max-w-sm transform transition-all border border-slate-700">
-                <div id="modalIconContainer" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                </div>
-                <h3 id="modalTitle" class="text-xl font-bold text-slate-100 mb-2">Confirmar Ação</h3>
-                <p id="modalDescription" class="text-slate-400 text-sm mb-6">Esta ação afetará todos os usuários do sistema.</p>
-                <div class="flex gap-3">
-                    <button id="modalCancelBtn" class="flex-1 py-3 px-4 bg-slate-700 text-slate-300 rounded-xl font-semibold hover:bg-slate-600 transition">Cancelar</button>
-                    <button id="modalConfirmBtn" class="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition shadow-lg shadow-blue-900/50">Confirmar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- TELA DE LOGIN -->
+    <!-- LOGIN -->
     <div id="loginSection" class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-700">
-            <div class="text-center mb-8">
-                <h1 class="text-2xl font-bold text-slate-100">Painel Coletivo</h1>
-                <p class="text-slate-400 text-sm">Controle de Presença Office</p>
-            </div>
-            <form id="authForm" class="space-y-4">
+        <div class="bg-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-700 text-center">
+            <h1 class="text-2xl font-bold text-slate-100 mb-2">Painel Coletivo</h1>
+            <p class="text-slate-400 text-sm mb-8">Controle de Presença Office</p>
+            <form id="authForm" class="space-y-4 text-left">
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-1">E-mail</label>
                     <input type="email" id="email" required class="w-full px-4 py-2 bg-slate-900 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition">
@@ -102,136 +116,151 @@
                     <label class="block text-sm font-medium text-slate-300 mb-1">Senha</label>
                     <input type="password" id="password" required class="w-full px-4 py-2 bg-slate-900 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition">
                 </div>
-                <button type="submit" id="btnSignIn" class="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition shadow-lg shadow-blue-900/50">Entrar</button>
-                <button type="button" id="btnSignUp" class="w-full text-sm text-slate-400 hover:text-blue-400 transition">Não tem conta? Criar agora</button>
+                <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition mt-4">Entrar</button>
             </form>
         </div>
     </div>
 
-    <!-- TELA PRINCIPAL (APP) -->
+    <!-- APP PRINCIPAL -->
     <div id="mainApp" class="hidden max-w-7xl mx-auto py-10 px-4">
-        <!-- Loader Global Melhorado -->
+        <!-- GLOBAL LOADER COM BARRA DE PROGRESSO -->
         <div id="globalLoader" class="fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-6">
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
-                <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <h2 id="globalLoaderTitle" class="text-slate-100 font-bold mb-2">Sincronizando...</h2>
-                <p id="globalLoaderText" class="text-slate-400 text-xs mb-4 uppercase tracking-widest font-bold">Aguarde um momento</p>
-                
-                <div id="progressBarContainer" class="hidden">
-                    <div class="progress-bar-container">
-                        <div id="progressBarFill" class="progress-bar-fill"></div>
-                    </div>
-                    <p id="progressPercent" class="text-[10px] text-slate-500 mt-2">0% completo</p>
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-10 max-w-sm w-full shadow-2xl text-center">
+                <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                <h2 id="globalLoaderTitle" class="text-slate-100 font-bold mb-2 uppercase tracking-widest text-sm">Carregando Dados</h2>
+                <div id="progressInfo" class="text-[11px] text-slate-400 font-mono mb-1">Iniciando...</div>
+                <div class="progress-bar-container">
+                    <div id="progressBarFill" class="progress-bar-fill"></div>
                 </div>
-
-                <button id="cancelOperationBtn" class="mt-6 w-full py-2 px-4 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-bold transition">
-                    Cancelar Operação
-                </button>
             </div>
         </div>
 
         <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 border-b pb-6 border-slate-800">
             <div>
-                <h1 class="text-3xl font-bold text-slate-100">Presença Office <span class="text-blue-500 text-sm font-normal">(Modo Global)</span></h1>
-                <div class="flex items-center gap-2 mt-1">
-                    <span id="userEmailDisplay" class="text-sm text-slate-400 font-medium"></span>
-                    <span class="text-slate-700">|</span>
-                    <button onclick="handleSignOut()" class="text-xs text-red-400 hover:underline">Sair do sistema</button>
+                <h1 class="text-3xl font-bold text-slate-100">Presença Office</h1>
+                <div class="flex flex-col mt-1">
+                    <div class="flex items-center gap-2 text-sm text-slate-400">
+                        <span id="userEmailDisplay" class="font-medium text-slate-300"></span> | <button onclick="handleSignOut()" class="text-red-400 hover:underline">Sair</button>
+                    </div>
+                    <!-- Botão posicionado abaixo do e-mail -->
+                    <button onclick="exportToExcel()" class="mt-3 w-fit flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all shadow-lg shadow-emerald-900/20">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Exportar Relatório Excel
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-6 bg-slate-800/50 p-3 rounded-xl border border-slate-700">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Filtrar por Controlador</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggleControlFilter" onchange="applySearch()">
+                        <span class="slider"></span>
+                    </label>
                 </div>
             </div>
         </div>
 
         <div class="app-grid">
-            <!-- COLUNA ESQUERDA: RESULTADOS -->
             <main class="space-y-8 order-2 md:order-1">
-                <!-- Estatísticas -->
-                <div id="statsSection" class="hidden grid grid-cols-1 gap-4">
-                    <div class="bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-700 flex items-center gap-4">
-                        <div class="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                        </div>
-                        <div>
-                            <p id="statDateTitle" class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Total de Pessoas (Global)</p>
-                            <h3 id="statUnique" class="text-2xl font-bold text-blue-400 line-height-1">0</h3>
-                        </div>
+                <!-- SEÇÃO DE ESTATÍSTICAS -->
+                <div id="statsSection" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Pessoas Únicas</p>
+                        <h3 id="statUnique" class="text-2xl font-bold text-blue-400">0</h3>
+                    </div>
+                    <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Total de Registros</p>
+                        <h3 id="statTotal" class="text-2xl font-bold text-emerald-400">0</h3>
                     </div>
                 </div>
 
-                <!-- Campo de Pesquisa -->
                 <div id="searchContainer" class="hidden">
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <svg class="h-5 w-5 text-slate-500 group-focus-within:text-blue-500 transition-colors" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-                        <input 
-                            type="text" 
-                            id="searchInput" 
-                            placeholder="Pesquisar registros globais..." 
-                            class="block w-full pl-11 pr-12 py-3 bg-slate-800 border border-slate-700 text-white rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                        >
-                    </div>
+                    <input type="text" id="searchInput" placeholder="Pesquisar por nome ou ID..." class="w-full px-5 py-3 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                 </div>
 
-                <!-- Tabela -->
-                <div id="tableContainer" class="hidden bg-slate-800 rounded-xl shadow-sm border border-slate-700 overflow-hidden">
-                    <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
-                        <h2 class="text-sm font-bold text-slate-300">Relatório Unificado</h2>
-                        <button onclick="exportToExcel()" class="flex items-center gap-2 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs font-bold rounded-lg transition shadow-md">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            Exportar Excel
-                        </button>
+                <div id="tableContainer" class="hidden bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                    <div class="p-4 border-b border-slate-700 flex justify-between items-center text-xs">
+                        <h2 class="font-bold text-slate-300 uppercase tracking-widest">Relatório: Último Acesso por Pessoa</h2>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
-                            <thead class="bg-slate-900/50 border-b border-slate-700">
+                            <thead class="bg-slate-900/50">
                                 <tr>
-                                    <th class="px-6 py-4 font-semibold text-slate-500 text-[10px] uppercase tracking-wider">ID Pessoal</th>
-                                    <th class="px-6 py-4 font-semibold text-slate-500 text-[10px] uppercase tracking-wider">Nome Completo</th>
-                                    <th class="px-6 py-4 font-semibold text-slate-500 text-[10px] uppercase tracking-wider">Último Registro</th>
-                                    <th class="px-6 py-4 font-semibold text-slate-500 text-[10px] uppercase tracking-wider text-center">Dias Ausente</th>
+                                    <th class="px-6 py-4 text-slate-500 text-[10px] uppercase tracking-wider">ID Pessoal</th>
+                                    <th class="px-6 py-4 text-slate-500 text-[10px] uppercase tracking-wider">Nome Completo</th>
+                                    <th class="px-6 py-4 text-slate-500 text-[10px] uppercase tracking-wider">Data Último Registro</th>
+                                    <th class="px-6 py-4 text-slate-500 text-[10px] uppercase tracking-wider text-center">Ausência</th>
                                 </tr>
                             </thead>
-                            <tbody id="dataTableBody" class="divide-y divide-slate-700 text-sm text-slate-300"></tbody>
+                            <tbody id="dataTableBody" class="divide-y divide-slate-700 text-sm"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Empty State -->
-                <div id="emptyState" class="bg-slate-800 rounded-xl p-12 text-center border border-slate-700 shadow-sm">
-                    <div class="w-16 h-16 bg-slate-900 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/></svg>
-                    </div>
-                    <h3 class="text-slate-100 font-bold">Base de dados vazia</h3>
-                    <p class="text-slate-400 text-sm max-w-xs mx-auto mt-2">Carregue arquivos para compartilhar os registros com a equipe.</p>
+                <div id="emptyState" class="bg-slate-800 rounded-xl p-12 text-center border border-slate-700">
+                    <h3 class="text-slate-100 font-bold">Nenhum dado para exibir</h3>
+                    <p class="text-slate-400 text-sm mt-2">Carregue ficheiros de presença e o controlador.</p>
                 </div>
             </main>
 
-            <!-- COLUNA DIREITA -->
-            <aside class="sticky-sidebar space-y-6 order-1 md:order-2">
-                <div>
-                    <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Upload de Equipe</h2>
-                    <div id="dropZone" class="drop-zone rounded-xl p-6 text-center cursor-pointer shadow-sm relative overflow-hidden hover:border-blue-500/50 transition">
-                        <input type="file" id="fileInput" multiple accept=".csv, .xlsx, .xls" class="hidden">
-                        <div id="loader" class="absolute inset-0 bg-slate-800/90 flex items-center justify-center z-10">
-                            <div class="flex flex-col items-center p-4">
-                                <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-                                <p id="loaderText" class="text-blue-400 text-[10px] font-bold">Processando...</p>
-                            </div>
+            <aside class="sticky-sidebar space-y-8 order-1 md:order-2">
+                <!-- ARQUIVO CONTROLADOR -->
+                <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
+                    <h2 class="text-xs font-black text-blue-500 uppercase tracking-widest mb-4">Arquivo Controlador</h2>
+                    <div id="dropZoneControl" class="drop-zone rounded-xl p-4 text-center cursor-pointer border-dashed border-2 border-slate-700 hover:border-blue-500 transition-all bg-slate-900/30">
+                        <input type="file" id="controlInput" accept=".xlsx, .xls, .csv" class="hidden">
+                        <div class="flex flex-col items-center">
+                            <svg class="text-slate-500 mb-2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            <span id="controlFileName" class="text-[11px] font-bold text-slate-300">Selecionar Controlador</span>
                         </div>
-                        <div class="flex flex-col items-center py-2">
-                            <div class="w-10 h-10 bg-slate-900 text-blue-400 rounded-full flex items-center justify-center mb-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                            </div>
-                            <p class="text-slate-200 font-bold text-sm">Adicionar Arquivos</p>
-                            <p class="text-slate-500 text-[11px] mt-1">Visível para todos</p>
+                    </div>
+                    <div id="controlDetails" class="hidden mt-3 text-[10px] text-slate-500 flex justify-between px-1">
+                        <span id="controlCountText">0 IDs</span>
+                        <button onclick="clearControlFile()" class="text-red-400 hover:underline">Limpar</button>
+                    </div>
+                </div>
+
+                <!-- CALENDÁRIO DE COBERTURA -->
+                <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest">Cobertura de Datas</h2>
+                        <div class="flex gap-2">
+                            <button onclick="changeMonth(-1)" class="text-slate-500 hover:text-white transition">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                            </button>
+                            <span id="currentCalendarMonth" class="text-[10px] font-bold text-slate-200 min-w-[80px] text-center">Janeiro 2024</span>
+                            <button onclick="changeMonth(1)" class="text-slate-500 hover:text-white transition">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-slate-600 mb-2">
+                        <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+                    </div>
+                    <div id="calendarDays" class="grid grid-cols-7 gap-1">
+                        <!-- Dias gerados via JS -->
+                    </div>
+                    <div class="mt-4 flex items-center gap-2">
+                        <div class="w-3 h-3 bg-blue-600 rounded shadow-sm"></div>
+                        <span class="text-[10px] text-slate-400 font-medium">Dias com registros carregados</span>
+                    </div>
+                </div>
+
+                <!-- ARQUIVOS DE PRESENÇA -->
+                <div>
+                    <h2 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Arquivos de Presença</h2>
+                    <div id="dropZone" class="drop-zone rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 transition bg-slate-800 border-2 border-slate-700 border-dashed">
+                        <input type="file" id="fileInput" multiple accept=".csv, .xlsx, .xls" class="hidden">
+                        <div class="flex flex-col items-center">
+                            <svg class="text-blue-500 mb-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/></svg>
+                            <p class="text-slate-200 font-bold text-sm">Carregar Presenças</p>
                         </div>
                     </div>
                 </div>
 
                 <div id="fileListSection" class="hidden">
-                    <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-3">Arquivos na Nuvem</h3>
+                    <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Arquivos em Nuvem</h3>
                     <div id="fileListContainer" class="flex flex-col gap-2"></div>
                 </div>
             </aside>
@@ -245,102 +274,39 @@
 
         const loginSection = document.getElementById('loginSection');
         const mainApp = document.getElementById('mainApp');
-        const authForm = document.getElementById('authForm');
-        
-        // Elementos do Novo Loader Global
         const globalLoader = document.getElementById('globalLoader');
-        const globalLoaderTitle = document.getElementById('globalLoaderTitle');
-        const globalLoaderText = document.getElementById('globalLoaderText');
-        const progressBarContainer = document.getElementById('progressBarContainer');
         const progressBarFill = document.getElementById('progressBarFill');
-        const progressPercent = document.getElementById('progressPercent');
-        const cancelOperationBtn = document.getElementById('cancelOperationBtn');
-
-        const loader = document.getElementById('loader');
-        const loaderText = document.getElementById('loaderText');
-        const emptyState = document.getElementById('emptyState');
-        const fileInput = document.getElementById('fileInput');
-        const dropZone = document.getElementById('dropZone');
+        const progressInfo = document.getElementById('progressInfo');
         const searchInput = document.getElementById('searchInput');
-        const statDateTitle = document.getElementById('statDateTitle');
-        const confirmModal = document.getElementById('confirmModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalDescription = document.getElementById('modalDescription');
-        const modalConfirmBtn = document.getElementById('modalConfirmBtn');
-        const modalCancelBtn = document.getElementById('modalCancelBtn');
-        const modalIconContainer = document.getElementById('modalIconContainer');
+        const toggleControlFilter = document.getElementById('toggleControlFilter');
+        const controlFileName = document.getElementById('controlFileName');
+        const controlCountText = document.getElementById('controlCountText');
+        const controlDetails = document.getElementById('controlDetails');
+        const calendarDays = document.getElementById('calendarDays');
+        const currentCalendarMonth = document.getElementById('currentCalendarMonth');
 
         let currentUser = null;
         let loadedFiles = [];
-        let modalCallback = null;
-        let lastProcessedData = []; 
+        let allRawRecords = [];
+        let groupedPeople = []; 
+        let allowedIds = new Set();
+        let coveredDates = new Set(); 
+        let calendarViewDate = new Date();
         let currentFilteredData = [];
-        let abortController = null; // Para cancelar as requisições
-
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
-        });
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
-        });
-
-        dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files), false);
-
-        function showConfirmModal(title, description, onConfirm, type = 'danger') {
-            modalTitle.innerText = title;
-            modalDescription.innerText = description;
-            confirmModal.style.display = 'block';
-            modalCallback = onConfirm;
-            if (type === 'danger') {
-                modalIconContainer.className = "w-16 h-16 bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4";
-                modalIconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
-                modalConfirmBtn.className = "flex-1 py-3 px-4 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition";
-                modalConfirmBtn.innerText = "Excluir para todos";
-            } else {
-                modalIconContainer.className = "w-16 h-16 bg-blue-900/30 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4";
-                modalIconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
-                modalConfirmBtn.className = "flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition";
-                modalConfirmBtn.innerText = "Sobrescrever";
-            }
-        }
-
-        modalCancelBtn.onclick = () => { confirmModal.style.display = 'none'; modalCallback = null; };
-        modalConfirmBtn.onclick = async () => {
-            if (modalCallback) {
-                const cb = modalCallback; modalCallback = null;
-                confirmModal.style.display = 'none'; await cb();
-            }
-        };
 
         async function checkSession() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) onAuthSuccess(session.user);
         }
 
-        authForm.onsubmit = async (e) => {
+        document.getElementById('authForm').onsubmit = async (e) => {
             e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            showGlobalLoader(true, "Verificando...", "Autenticando usuário");
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) { showToast(error.message, 'error'); showGlobalLoader(false); } 
-            else onAuthSuccess(data.user);
-        };
-
-        document.getElementById('btnSignUp').onclick = async () => {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            if (!email || !password) return showToast("Campos obrigatórios", "warning");
-            showGlobalLoader(true, "Criando Conta...", "Aguarde processamento");
-            const { error } = await supabaseClient.auth.signUp({ email, password });
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ 
+                email: e.target.email.value, 
+                password: e.target.password.value 
+            });
             if (error) showToast(error.message, 'error');
-            else showToast("Sucesso! Verifique seu e-mail.", 'success');
-            showGlobalLoader(false);
+            else onAuthSuccess(data.user);
         };
 
         function onAuthSuccess(user) {
@@ -353,313 +319,299 @@
 
         async function handleSignOut() { await supabaseClient.auth.signOut(); location.reload(); }
 
-        // Otimização: Fetch em paralelo usando Promise.all e limites maiores
         async function fetchAllRecordsOptimized() {
-            abortController = new AbortController();
-            
-            // Primeiro, pegamos o count total para saber o progresso
-            const { count, error: countErr } = await supabaseClient
+            const { count, error: countError } = await supabaseClient
                 .from('attendance_records')
                 .select('*', { count: 'exact', head: true });
-            
-            if (countErr) throw countErr;
+
+            if (countError) throw countError;
             if (count === 0) return [];
 
-            const pageSize = 1000;
-            const totalPages = Math.ceil(count / pageSize);
+            const step = 1000;
+            const totalBatches = Math.ceil(count / step);
             const promises = [];
 
-            showProgressBar(true);
             updateProgressBar(0, count);
 
-            let loadedCount = 0;
-
-            // Criamos as promessas para carregar as páginas em paralelo (máximo de 5 por vez para não estourar rate limit)
-            const fetchPage = async (page) => {
-                if (abortController.signal.aborted) return [];
-                const from = page * pageSize;
-                const to = from + pageSize - 1;
-                
-                const { data, error } = await supabaseClient
-                    .from('attendance_records')
-                    .select('*')
-                    .order('id', { ascending: true })
-                    .range(from, to)
-                    .abortSignal(abortController.signal);
-                
-                if (error) throw error;
-                
-                loadedCount += data.length;
-                updateProgressBar(loadedCount, count);
-                return data;
-            };
-
-            // Executamos em lotes de concorrência controlada
-            let allRecords = [];
-            const concurrencyLimit = 5;
-            for (let i = 0; i < totalPages; i += concurrencyLimit) {
-                const batchPromises = [];
-                for (let j = i; j < i + concurrencyLimit && j < totalPages; j++) {
-                    batchPromises.push(fetchPage(j));
-                }
-                const results = await Promise.all(batchPromises);
-                allRecords = allRecords.concat(...results);
+            for (let i = 0; i < totalBatches; i++) {
+                const from = i * step;
+                const to = from + step - 1;
+                promises.push(
+                    supabaseClient
+                        .from('attendance_records')
+                        .select('personal_id, timestamp, first_name, last_name, file_id')
+                        .range(from, to)
+                        .then(res => {
+                            const loadedSoFar = Math.min((i + 1) * step, count);
+                            updateProgressBar(loadedSoFar, count);
+                            return res.data;
+                        })
+                );
             }
 
-            return allRecords;
+            const results = await Promise.all(promises);
+            return results.flat();
+        }
+
+        function updateProgressBar(current, total) {
+            const pct = Math.min(Math.round((current / total) * 100), 100);
+            progressBarFill.style.width = `${pct}%`;
+            progressInfo.innerText = `${current.toLocaleString()} de ${total.toLocaleString()} registros (${pct}%)`;
         }
 
         async function loadDataFromSupabase() {
-            showGlobalLoader(true, "Carregamento Base Global", "Sincronizando registros compartilhados...");
+            showGlobalLoader(true, "Sincronizando Banco...");
             try {
-                const { data: files } = await supabaseClient.from('files').select('*');
-                const records = await fetchAllRecordsOptimized();
+                const [filesRes, records] = await Promise.all([
+                    supabaseClient.from('files').select('*'),
+                    fetchAllRecordsOptimized()
+                ]);
+
+                loadedFiles = filesRes.data || [];
+                allRawRecords = records;
                 
-                loadedFiles = files.map(f => ({
-                    id: f.id, name: f.name,
-                    data: records.filter(r => r.file_id === f.id).map(r => ({
-                        id: r.personal_id, horario: r.timestamp, nome: r.first_name, sobrenome: r.last_name
-                    }))
-                }));
+                coveredDates.clear();
+                allRawRecords.forEach(r => {
+                    const d = new Date(r.timestamp);
+                    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    coveredDates.add(dateStr);
+                });
+
                 processAndDisplay();
+                renderCalendar();
             } catch (err) { 
-                if (err.name === 'AbortError') {
-                    showToast("Sincronização cancelada.", "info");
-                } else {
-                    showToast("Falha ao sincronizar dados.", "error"); 
+                console.error(err);
+                showToast("Erro ao carregar dados", "error"); 
+            } finally { 
+                setTimeout(() => showGlobalLoader(false), 500);
+            }
+        }
+
+        function renderCalendar() {
+            calendarDays.innerHTML = '';
+            const year = calendarViewDate.getFullYear();
+            const month = calendarViewDate.getMonth();
+            const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            currentCalendarMonth.innerText = `${monthNames[month]} ${year}`;
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            for (let i = 0; i < firstDay; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'calendar-day';
+                calendarDays.appendChild(empty);
+            }
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day text-slate-400';
+                dayEl.innerText = day;
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                if (coveredDates.has(dateStr)) {
+                    dayEl.classList.add('day-active');
+                    dayEl.classList.remove('text-slate-400');
                 }
+                calendarDays.appendChild(dayEl);
             }
-            finally { showGlobalLoader(false); }
         }
 
-        cancelOperationBtn.onclick = () => {
-            if (abortController) {
-                abortController.abort();
-            }
-            showGlobalLoader(false);
-        };
-
-        async function deleteFileGlobal(fileId) {
-            await supabaseClient.from('attendance_records').delete().eq('file_id', fileId);
-            await supabaseClient.from('files').delete().eq('id', fileId);
-            loadedFiles = loadedFiles.filter(f => f.id !== fileId);
-        }
-
-        async function saveFileRecords(fileName, rawData) {
-            showGlobalLoader(true, "Enviando para Nuvem", `Processando ${fileName}`);
-            const { data: fileRecord, error: fErr } = await supabaseClient
-                .from('files').insert([{ name: fileName, user_id: currentUser.id }]).select().single();
-            
-            if (fErr) { showToast("Erro ao criar arquivo.", "error"); showGlobalLoader(false); return; }
-
-            const batchSize = 1000;
-            showProgressBar(true);
-            updateProgressBar(0, rawData.length);
-
-            for (let i = 0; i < rawData.length; i += batchSize) {
-                if (abortController?.signal.aborted) break;
-                const batch = rawData.slice(i, i + batchSize);
-                const recordsToInsert = batch.map(r => ({
-                    user_id: currentUser.id, file_id: fileRecord.id, personal_id: r.id,
-                    first_name: r.nome, last_name: r.sobrenome, timestamp: r.horario
-                }));
-                
-                await supabaseClient.from('attendance_records').insert(recordsToInsert);
-                updateProgressBar(i + batch.length, rawData.length);
-            }
-            
-            loadedFiles.push({ id: fileRecord.id, name: fileName, data: rawData });
-            processAndDisplay(); showGlobalLoader(false);
-            showToast(`Arquivo "${fileName}" disponível para todos.`, "success");
-        }
-
-        async function handleFiles(files) {
-            if (!files || files.length === 0) return;
-            for (const file of files) {
-                const existingFile = loadedFiles.find(f => f.name === file.name);
-                if (existingFile) {
-                    showConfirmModal("Arquivo já existe", `Deseja atualizar "${file.name}" para todos?`, async () => {
-                        showGlobalLoader(true, "Atualizando...", "Removendo versão antiga");
-                        await deleteFileGlobal(existingFile.id);
-                        const rawData = await processFile(file);
-                        if (rawData.length > 0) await saveFileRecords(file.name, rawData);
-                        else { showToast("Dados inválidos.", "warning"); showGlobalLoader(false); }
-                    }, 'info');
-                    continue; 
-                }
-                showGlobalLoader(true, "Analisando...", file.name);
-                const rawData = await processFile(file);
-                if (rawData.length === 0) { showToast("Arquivo inválido.", "warning"); showGlobalLoader(false); continue; }
-                await saveFileRecords(file.name, rawData);
-            }
-            fileInput.value = "";
-        }
-
-        function removeFile(fileId) {
-            const file = loadedFiles.find(f => f.id === fileId);
-            showConfirmModal("Excluir para Todos?", `Isso removerá os registros de "${file.name}" de todos os usuários.`, async () => {
-                showGlobalLoader(true, "Limpando nuvem...", "Aguarde");
-                try {
-                    await deleteFileGlobal(fileId);
-                    processAndDisplay();
-                    showToast("Arquivo removido da rede.", "success");
-                } catch (err) { showToast("Erro ao excluir.", "error"); }
-                finally { showGlobalLoader(false); }
-            });
-        }
-
-        async function processFile(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const data = e.target.result;
-                        const workbook = file.name.endsWith('.csv') 
-                            ? XLSX.read(new TextDecoder('utf-8').decode(data), { type: 'string' }) 
-                            : XLSX.read(data, { type: 'binary' });
-                        const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-                        const dataIndex = jsonData.findIndex(row => row && row.some(cell => String(cell).includes('ID Pessoal')));
-                        if (dataIndex === -1) return resolve([]);
-                        const rows = jsonData.slice(dataIndex + 1);
-                        const results = rows.map(row => {
-                            if (!row[6]) return null;
-                            return { id: String(row[6]).trim(), horario: row[1], nome: row[7] || 'N/A', sobrenome: row[8] || '' };
-                        }).filter(r => r && r.id);
-                        resolve(results);
-                    } catch (err) { resolve([]); }
-                };
-                file.name.endsWith('.csv') ? reader.readAsArrayBuffer(file) : reader.readAsBinaryString(file);
-            });
+        function changeMonth(step) {
+            calendarViewDate.setMonth(calendarViewDate.getMonth() + step);
+            renderCalendar();
         }
 
         function processAndDisplay() {
             const container = document.getElementById('fileListContainer');
-            const fileSection = document.getElementById('fileListSection');
             container.innerHTML = '';
-            
             if (loadedFiles.length > 0) {
-                fileSection.classList.remove('hidden');
-                loadedFiles.forEach(file => {
-                    const div = document.createElement('div');
-                    div.className = "flex items-center justify-between gap-2 bg-slate-800 border border-slate-700 pl-3 pr-2 py-2 rounded-lg text-[11px] hover:border-blue-500 transition";
-                    div.innerHTML = `
-                        <div class="flex items-center gap-2 overflow-hidden">
-                            <svg class="text-blue-500 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            <span class="truncate font-semibold text-slate-300">${file.name}</span>
-                        </div>
-                        <button onclick="removeFile(${file.id})" class="text-slate-600 hover:text-red-400 p-1">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                        </button>`;
-                    container.appendChild(div);
+                document.getElementById('fileListSection').classList.remove('hidden');
+                loadedFiles.forEach(f => {
+                    const item = document.createElement('div');
+                    item.className = "flex items-center justify-between bg-slate-800 p-2 rounded-lg border border-slate-700 text-[10px]";
+                    item.innerHTML = `<span class="truncate">${f.name}</span><button onclick="removeFile(${f.id})" class="text-red-400 hover:text-red-300">Excluir</button>`;
+                    container.appendChild(item);
                 });
-            } else fileSection.classList.add('hidden');
-
-            const allData = loadedFiles.flatMap(f => f.data);
-            if (allData.length === 0) {
+            }
+            if (allRawRecords.length === 0) {
                 ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.add('hidden'));
-                emptyState.classList.remove('hidden'); return;
+                document.getElementById('emptyState').classList.remove('hidden');
+                return;
             }
-
-            emptyState.classList.add('hidden');
-            const unique = {}; let minDate = null; let maxDate = null;
-            allData.forEach(r => { 
-                const dateObj = new Date(r.horario);
-                if (!minDate || dateObj < minDate) minDate = dateObj;
-                if (!maxDate || dateObj > maxDate) maxDate = dateObj;
-                if (!unique[r.id] || new Date(unique[r.id].horario) < dateObj) unique[r.id] = r; 
+            document.getElementById('emptyState').classList.add('hidden');
+            const personMap = new Map();
+            const now = new Date();
+            allRawRecords.forEach(r => {
+                const id = String(r.personal_id).trim();
+                const recordDate = new Date(r.timestamp);
+                if (!personMap.has(id) || recordDate > personMap.get(id).dt) {
+                    const diffTime = Math.abs(now - recordDate);
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    personMap.set(id, {
+                        id: id,
+                        dt: recordDate,
+                        nomeCompleto: `${r.first_name} ${r.last_name}`.trim(),
+                        diffDays: diffDays
+                    });
+                }
             });
-
-            if (minDate && maxDate) {
-                const minStr = minDate.toLocaleDateString('pt-BR');
-                const maxStr = maxDate.toLocaleDateString('pt-BR');
-                statDateTitle.innerText = (minStr === maxStr) ? `Presença Global em ${minStr}` : `Presença Global: ${minStr} a ${maxStr}`;
-            }
-
-            document.getElementById('statUnique').innerText = Object.keys(unique).length.toLocaleString();
-            ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.remove('hidden'));
-
-            const hoje = new Date();
-            lastProcessedData = Object.values(unique).map(item => {
-                const dt = new Date(item.horario);
-                const diffDays = Math.floor(Math.abs(hoje - dt) / (1000 * 3600 * 24));
-                return { ...item, diffDays, dt, nomeCompleto: `${item.nome} ${item.sobrenome}`.trim() };
-            });
-            lastProcessedData.sort((a, b) => a.dt - b.dt);
+            groupedPeople = Array.from(personMap.values());
+            groupedPeople.sort((a, b) => a.dt - b.dt);
             applySearch();
         }
 
         function applySearch() {
-            const term = searchInput.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            currentFilteredData = lastProcessedData.filter(item => {
-                const nomeNorm = item.nomeCompleto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                return nomeNorm.includes(term) || item.id.toLowerCase().includes(term);
+            const term = searchInput.value.toLowerCase();
+            const filterActive = toggleControlFilter.checked;
+            currentFilteredData = groupedPeople.filter(item => {
+                const matchSearch = item.nomeCompleto.toLowerCase().includes(term) || item.id.toLowerCase().includes(term);
+                const matchControl = filterActive ? allowedIds.has(item.id) : true;
+                return matchSearch && matchControl;
             });
+            document.getElementById('statUnique').innerText = currentFilteredData.length.toLocaleString();
+            document.getElementById('statTotal').innerText = allRawRecords.length.toLocaleString();
             renderTable(currentFilteredData);
+            ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.remove('hidden'));
         }
 
-        searchInput.oninput = applySearch;
-
         function renderTable(data) {
-            const tbody = document.getElementById('dataTableBody'); tbody.innerHTML = '';
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
             data.forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-700/30 transition-colors border-slate-700";
+                tr.className = "hover:bg-slate-700/30 border-slate-700";
+                const dataFormatada = item.dt.toLocaleString('pt-BR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
                 tr.innerHTML = `
                     <td class="px-6 py-4 font-mono text-[11px] text-slate-500">${item.id}</td>
                     <td class="px-6 py-4 font-bold text-slate-100">${item.nomeCompleto}</td>
-                    <td class="px-6 py-4 text-xs text-slate-400">${item.dt.toLocaleString('pt-BR')}</td>
-                    <td class="px-6 py-4 text-center font-black text-slate-100">${item.diffDays}</td>`;
+                    <td class="px-6 py-4 text-xs text-slate-400">${dataFormatada}</td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="text-slate-400 text-xs">
+                            ${item.diffDays === 0 ? 'Hoje' : item.diffDays + ' dias'}
+                        </span>
+                    </td>`;
                 tbody.appendChild(tr);
             });
-            if (data.length === 0) tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-slate-500 italic">Nenhum registro encontrado.</td></tr>`;
         }
 
         function exportToExcel() {
-            if (currentFilteredData.length === 0) return showToast("Sem dados.", "warning");
-            const exportData = currentFilteredData.map(item => ({ "ID Pessoal": item.id, "Nome Completo": item.nomeCompleto }));
+            if (currentFilteredData.length === 0) {
+                showToast("Não há dados para exportar", "error");
+                return;
+            }
+            
+            const exportData = currentFilteredData.map(item => ({
+                "ID Pessoal": item.id,
+                "Nome Completo": item.nomeCompleto,
+                "Data Último Registro": item.dt.toLocaleString('pt-BR'),
+                "Ausência": item.diffDays === 0 ? 'Hoje' : `${item.diffDays} dias`
+            }));
+
             const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Presença");
-            XLSX.writeFile(wb, `presenca_global_${new Date().toISOString().split('T')[0]}.xlsx`);
-            showToast("Exportado com sucesso!", "success");
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Relatório de Presença");
+            XLSX.writeFile(wb, `Relatorio_Presenca_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showToast("Arquivo Excel gerado!");
         }
 
-        dropZone.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => handleFiles(e.target.files);
+        async function removeFile(id) {
+            if (!confirm("Remover este arquivo e todos os seus registros?")) return;
+            showGlobalLoader(true, "Removendo...");
+            await supabaseClient.from('attendance_records').delete().eq('file_id', id);
+            await supabaseClient.from('files').delete().eq('id', id);
+            loadDataFromSupabase();
+        }
 
-        // Funções do Loader Global e Barra de Progresso
-        function showGlobalLoader(show, title, text) { 
+        async function handleControlFile(file) {
+            if (!file) return;
+            showGlobalLoader(true, "Lendo Controlador...");
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = e.target.result;
+                const wb = XLSX.read(data, { type: file.name.endsWith('.csv') ? 'string' : 'binary' });
+                const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+                const ids = json.slice(2).map(row => String(row[0] || "").trim()).filter(id => id);
+                allowedIds = new Set(ids);
+                controlFileName.innerText = file.name;
+                controlCountText.innerText = `${allowedIds.size} IDs`;
+                controlDetails.classList.remove('hidden');
+                applySearch();
+                showGlobalLoader(false);
+                showToast("Controlador Carregado");
+            };
+            if (file.name.endsWith('.csv')) reader.readAsText(file);
+            else reader.readAsArrayBuffer(file);
+        }
+
+        function clearControlFile() {
+            allowedIds = new Set();
+            controlDetails.classList.add('hidden');
+            controlFileName.innerText = "Selecionar Controlador";
+            applySearch();
+        }
+
+        async function saveFileRecords(fileName, rawData) {
+            showGlobalLoader(true, "Guardando...");
+            const { data: fileRec } = await supabaseClient.from('files').insert([{ name: fileName, user_id: currentUser.id }]).select().single();
+            const records = rawData.map(r => ({
+                user_id: currentUser.id, file_id: fileRec.id, personal_id: r.id,
+                first_name: r.nome, last_name: r.sobrenome, timestamp: r.horario
+            }));
+            const batchSize = 1000;
+            const total = records.length;
+            for (let i = 0; i < total; i += batchSize) {
+                const batch = records.slice(i, i + batchSize);
+                updateProgressBar(i, total);
+                await supabaseClient.from('attendance_records').insert(batch);
+            }
+            loadDataFromSupabase();
+        }
+
+        function showGlobalLoader(show, title) { 
             globalLoader.style.display = show ? 'flex' : 'none'; 
-            if (title) globalLoaderTitle.innerText = title;
-            if (text) globalLoaderText.innerText = text;
-            if (!show) {
-                showProgressBar(false);
-                abortController = null;
-            }
+            if (title) document.getElementById('globalLoaderTitle').innerText = title;
+            progressBarFill.style.width = '0%';
         }
 
-        function showProgressBar(show) {
-            progressBarContainer.classList.toggle('hidden', !show);
-            if (!show) {
-                progressBarFill.style.width = '0%';
-                progressPercent.innerText = '0% completo';
-            }
-        }
-
-        function updateProgressBar(current, total) {
-            const percent = Math.round((current / total) * 100);
-            progressBarFill.style.width = `${percent}%`;
-            progressPercent.innerText = `${percent}% completo (${current.toLocaleString()} de ${total.toLocaleString()})`;
-        }
-
-        function showToast(msg, type) {
+        function showToast(msg, type = 'success') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
-            const bg = { success: 'bg-green-600', info: 'bg-blue-600', warning: 'bg-orange-600', error: 'bg-red-600' }[type || 'info'];
-            toast.className = `${bg} text-white px-5 py-3 rounded-xl shadow-lg transition-all duration-300 text-sm font-medium transform translate-x-0`;
-            toast.innerText = msg; container.appendChild(toast);
-            setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 500); }, 4000);
+            toast.className = `${type === 'error' ? 'bg-red-600' : 'bg-blue-600'} text-white px-5 py-3 rounded-xl shadow-lg text-sm transition-all duration-300`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
+        async function parseAttendance(file) {
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const wb = XLSX.read(e.target.result, { type: file.name.endsWith('.csv') ? 'string' : 'binary' });
+                    const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+                    const idx = json.findIndex(r => r && r.some(c => String(c).includes('ID Pessoal')));
+                    if (idx === -1) return resolve([]);
+                    resolve(json.slice(idx + 1).map(row => ({
+                        id: String(row[6] || "").trim(), horario: row[1], nome: row[7] || 'N/A', sobrenome: row[8] || ''
+                    })).filter(r => r.id));
+                };
+                if (file.name.endsWith('.csv')) reader.readAsText(file);
+                else reader.readAsArrayBuffer(file);
+            });
+        }
+
+        document.getElementById('controlInput').onchange = e => handleControlFile(e.target.files[0]);
+        document.getElementById('dropZoneControl').onclick = () => document.getElementById('controlInput').click();
+        document.getElementById('fileInput').onchange = async e => {
+            for (let f of e.target.files) {
+                const data = await parseAttendance(f);
+                if (data.length) await saveFileRecords(f.name, data);
+            }
+        };
+        document.getElementById('dropZone').onclick = () => document.getElementById('fileInput').click();
+        searchInput.oninput = applySearch;
         checkSession();
     </script>
 </body>
