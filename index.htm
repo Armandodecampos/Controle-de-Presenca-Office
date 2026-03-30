@@ -21,7 +21,7 @@
             .sticky-sidebar { position: sticky; top: 2rem; max-height: calc(100vh - 4rem); overflow-y: auto; }
         }
         .progress-bar-container { width: 100%; height: 8px; background-color: #334155; border-radius: 10px; overflow: hidden; margin-top: 15px; }
-        .progress-bar-fill { height: 100%; background-color: #3b82f6; width: 0%; transition: width 0.4s; }
+        .progress-bar-fill { height: 100%; background-color: #3b82f6; width: 0%; transition: width 0.3s ease-out; }
         .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 34px; }
@@ -38,13 +38,15 @@
     <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
     
     <div id="mainApp" class="max-w-7xl mx-auto py-10 px-4">
-        <!-- Loader Global -->
+        <!-- Loader Global com Barra de Progresso Real -->
         <div id="globalLoader" class="fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-6">
             <div class="bg-slate-800 border border-slate-700 rounded-2xl p-10 max-w-sm w-full shadow-2xl text-center">
                 <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-                <h2 id="globalLoaderTitle" class="text-slate-100 font-bold mb-2 uppercase tracking-widest text-sm">Processando</h2>
-                <div id="progressInfo" class="text-[11px] text-slate-400 font-mono mb-1">Aguarde...</div>
-                <div class="progress-bar-container"><div id="progressBarFill" class="progress-bar-fill"></div></div>
+                <h2 id="globalLoaderTitle" class="text-slate-100 font-bold mb-2 uppercase tracking-widest text-sm">Importando</h2>
+                <div id="progressInfo" class="text-[11px] text-slate-400 font-mono mb-1">Iniciando...</div>
+                <div class="progress-bar-container">
+                    <div id="progressBarFill" class="progress-bar-fill"></div>
+                </div>
             </div>
         </div>
 
@@ -61,7 +63,7 @@
             </div>
             <div class="flex items-center gap-6 bg-slate-800/50 p-3 rounded-xl border border-slate-700">
                 <div class="flex items-center gap-3">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Filtrar por pessoas atualmente cadastradas no sistema</span>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Filtrar por pessoas cadastradas</span>
                     <label class="switch">
                         <input type="checkbox" id="toggleControlFilter" onchange="applySearch()">
                         <span class="slider"></span>
@@ -85,7 +87,7 @@
                 </div>
 
                 <div id="searchContainer" class="hidden">
-                    <input type="text" id="searchInput" placeholder="Pesquisar por nome (ex: cassia) ou ID..." class="w-full px-5 py-3 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    <input type="text" id="searchInput" placeholder="Pesquisar por nome ou ID..." class="w-full px-5 py-3 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                 </div>
 
                 <div id="tableContainer" class="hidden bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
@@ -106,15 +108,15 @@
 
                 <div id="emptyState" class="bg-slate-800 rounded-xl p-12 text-center border border-slate-700">
                     <h3 class="text-slate-100 font-bold">Nenhum dado armazenado</h3>
-                    <p class="text-slate-400 text-sm mt-2">Arraste os arquivos de presença para a barra lateral.</p>
+                    <p class="text-slate-400 text-sm mt-2">Arraste os arquivos de presença para a zona de carregamento.</p>
                 </div>
             </main>
 
             <!-- Barra Lateral -->
             <aside class="sticky-sidebar space-y-8 order-1 md:order-2">
-                <!-- Seção: Pessoas Cadastradas -->
+                <!-- Importar Pessoas Cadastradas -->
                 <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
-                    <h2 class="text-[11px] font-black text-blue-500 uppercase tracking-widest mb-4 leading-tight">Importar pessoas atualmente cadastradas no sistema</h2>
+                    <h2 class="text-[11px] font-black text-blue-500 uppercase tracking-widest mb-4 leading-tight">Lista de IDs do Sistema</h2>
                     <div id="dropZoneControl" class="drop-zone rounded-xl p-4 text-center cursor-pointer border-dashed border-2 border-slate-700 hover:border-blue-500 bg-slate-900/30">
                         <input type="file" id="controlInput" accept=".xlsx, .xls, .csv" class="hidden">
                         <span id="controlFileName" class="text-[11px] font-bold text-slate-300">Selecionar Ficheiro</span>
@@ -125,10 +127,10 @@
                     </div>
                 </div>
 
-                <!-- Seção: Calendário -->
+                <!-- Calendário -->
                 <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest">Cobertura de Datas</h2>
+                        <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest">Cobertura</h2>
                         <div class="flex items-center gap-2">
                             <button onclick="changeMonth(-1)" class="nav-btn text-slate-400 hover:text-white">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="15 18 9 12 15 6"/></svg>
@@ -145,19 +147,19 @@
                     </div>
                 </div>
 
-                <!-- Seção: Importar Registros -->
+                <!-- Importar Registros -->
                 <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
                     <h2 class="text-[11px] font-black text-blue-500 uppercase tracking-widest mb-4 leading-tight">Importar Registros</h2>
                     <div id="dropZone" class="drop-zone rounded-xl p-6 text-center cursor-pointer border-2 border-slate-700 border-dashed hover:border-blue-500">
                         <input type="file" id="fileInput" multiple accept=".csv, .xlsx, .xls" class="hidden">
                         <p class="text-slate-200 font-bold text-sm">Carregar Arquivos</p>
-                        <p class="text-[10px] text-slate-500 mt-1">Excel ou CSV</p>
+                        <p class="text-[10px] text-slate-500 mt-1">Clique ou Arraste múltiplos arquivos</p>
                     </div>
                 </div>
 
                 <div id="fileListSection" class="hidden">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Arquivos Carregados</h3>
+                        <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Arquivos Ativos</h3>
                         <button onclick="clearAllData()" class="text-[9px] text-red-500 hover:underline uppercase font-bold">Limpar Tudo</button>
                     </div>
                     <div id="fileListContainer" class="flex flex-col gap-2"></div>
@@ -167,7 +169,6 @@
     </div>
 
     <script>
-        // Configuração IndexedDB para evitar erro de Quota (LocalStorage é limitado a 5-10MB)
         const DB_NAME = 'PresenceOfficeDB';
         const DB_VERSION = 1;
         let db;
@@ -179,7 +180,6 @@
         let groupedPeople = [];
         let currentViewDate = new Date();
 
-        // Inicializa Banco de Dados IndexedDB
         async function initDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -201,7 +201,32 @@
             await initDB();
             loadLocalData(); 
             renderCalendar(); 
+            setupDragAndDrop();
         };
+
+        function setupDragAndDrop() {
+            const zone = document.getElementById('dropZone');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                zone.addEventListener(eventName, e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                zone.addEventListener(eventName, () => zone.classList.add('drag-over'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                zone.addEventListener(eventName, () => zone.classList.remove('drag-over'), false);
+            });
+
+            zone.addEventListener('drop', e => {
+                const files = e.dataTransfer.files;
+                if (files.length) handleFiles(files);
+            }, false);
+        }
 
         function removeAccents(str) {
             if (!str) return "";
@@ -216,7 +241,6 @@
 
         async function loadLocalData() {
             try {
-                // Carregar lista de ficheiros do LocalStorage (leve)
                 loadedFiles = JSON.parse(localStorage.getItem(STORAGE_FILES) || '[]');
                 const ctrl = JSON.parse(localStorage.getItem(STORAGE_CONTROL) || 'null');
                 
@@ -226,15 +250,10 @@
                     document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
                     document.getElementById('controlDetails').classList.remove('hidden');
                 }
-
-                // Carregar registros da IndexedDB (pesado)
                 allRawRecords = await getAllRecordsFromDB();
-                
                 updateCoveredDates();
                 processAndDisplay();
-            } catch(e) {
-                console.error("Erro ao carregar dados", e);
-            }
+            } catch(e) { console.error(e); }
         }
 
         async function getAllRecordsFromDB() {
@@ -264,13 +283,9 @@
                 request.onsuccess = (e) => {
                     const cursor = e.target.result;
                     if (cursor) {
-                        if (cursor.value.file_id === fileId) {
-                            cursor.delete();
-                        }
+                        if (cursor.value.file_id === fileId) cursor.delete();
                         cursor.continue();
-                    } else {
-                        resolve();
-                    }
+                    } else resolve();
                 };
             });
         }
@@ -295,7 +310,7 @@
                 loadedFiles.forEach(f => {
                     const div = document.createElement('div');
                     div.className = "flex items-center justify-between bg-slate-800 p-2 rounded-lg border border-slate-700 text-[10px]";
-                    div.innerHTML = `<span class="truncate pr-2">${f.name}</span><button onclick="removeFile('${f.id}')" class="text-red-400 hover:text-red-300 font-bold">X</button>`;
+                    div.innerHTML = `<span class="truncate pr-2">${f.name}</span><button onclick="removeFile('${f.id}')" class="text-red-400 hover:text-red-300 font-bold px-2">X</button>`;
                     container.appendChild(div);
                 });
             } else {
@@ -309,7 +324,6 @@
             }
 
             document.getElementById('emptyState').classList.add('hidden');
-            
             const personMap = new Map();
             const now = new Date();
 
@@ -389,12 +403,10 @@
             grid.innerHTML = '';
             
             const totalDays = new Date(y, m + 1, 0).getDate();
-            
             for(let i = 1; i <= totalDays; i++){
                 const day = document.createElement('div');
                 day.className = 'calendar-day text-slate-600 border border-slate-800/50';
                 day.innerText = i;
-                
                 const dateKey = `${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
                 if(coveredDates.has(dateKey)) {
                     day.classList.add('day-active');
@@ -415,15 +427,11 @@
                         const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
                         
                         const idx = json.findIndex(row => row && row.some(c => String(c).includes('ID Pessoal')));
-                        if(idx === -1) {
-                            showToast("Formato de arquivo inválido", "error");
-                            return res([]);
-                        }
+                        if(idx === -1) return res([]);
                         
                         const rows = json.slice(idx + 1).map(row => {
                             let ts = row[1];
                             if (typeof ts === 'number') ts = excelDateToJSDate(ts);
-                            
                             return {
                                 personal_id: String(row[6] || "").trim(),
                                 timestamp: ts,
@@ -431,56 +439,105 @@
                                 last_name: row[8] || ''
                             };
                         }).filter(x => x.personal_id && x.timestamp && !isNaN(new Date(x.timestamp).getTime()));
-                        
                         res(rows);
-                    } catch(err) {
-                        console.error(err);
-                        showToast("Erro ao processar ficheiro", "error");
-                        res([]);
-                    }
+                    } catch(err) { res([]); }
                 };
                 reader.onerror = () => res([]);
                 reader.readAsBinaryString(file);
             });
         }
 
-        async function saveRecords(name, data) {
-            const fileId = 'f' + Date.now() + Math.random().toString(16).slice(2, 8);
+        async function handleFiles(files) {
+            if (!files || files.length === 0) return;
             
-            // Adicionar à IndexedDB (Persistente e sem limite de Quota pequeno)
-            const newRecords = data.map(d => ({ ...d, file_id: fileId }));
-            await addRecordsToDB(newRecords);
+            const loader = document.getElementById('globalLoader');
+            const loaderTitle = document.getElementById('globalLoaderTitle');
+            const progressFill = document.getElementById('progressBarFill');
+            const progressInfo = document.getElementById('progressInfo');
+            
+            loader.classList.replace('hidden', 'flex');
+            progressFill.style.width = "0%";
+            
+            const total = files.length;
+            let successCount = 0;
 
-            // Atualizar metadados no LocalStorage
-            loadedFiles.push({ id: fileId, name });
-            localStorage.setItem(STORAGE_FILES, JSON.stringify(loadedFiles));
-            
-            // Atualizar memória local
-            allRawRecords.push(...newRecords);
-            
+            for(let i = 0; i < total; i++) {
+                const f = files[i];
+                const currentFileIndex = i + 1;
+                
+                // Atualiza progresso da UI
+                loaderTitle.innerText = `Importando (${currentFileIndex}/${total})`;
+                progressInfo.innerText = f.name;
+                
+                try {
+                    const data = await parseAttendance(f);
+                    if(data.length) {
+                        await saveRecords(f.name, data, false); // Passa false para não renderizar a cada arquivo
+                        successCount++;
+                    }
+                } catch (err) {
+                    console.error("Erro no arquivo:", f.name, err);
+                }
+                
+                // Calcula porcentagem e atualiza barra
+                const percentage = Math.round((currentFileIndex / total) * 100);
+                progressFill.style.width = `${percentage}%`;
+                
+                // Pequeno delay para suavizar animação em arquivos muito leves
+                await new Promise(r => setTimeout(r, 100));
+            }
+
+            // Renderização final após todos os arquivos
             updateCoveredDates();
             processAndDisplay();
             renderCalendar();
-            showToast(`Carregado: ${name}`);
+            
+            setTimeout(() => {
+                loader.classList.replace('flex', 'hidden');
+                document.getElementById('fileInput').value = "";
+                showToast(`${successCount} arquivos importados com sucesso!`);
+            }, 500);
+        }
+
+        async function saveRecords(name, data, shouldUpdateUI = true) {
+            const fileId = 'f' + Date.now() + Math.random().toString(16).slice(2, 8);
+            const newRecords = data.map(d => ({ ...d, file_id: fileId }));
+            await addRecordsToDB(newRecords);
+
+            loadedFiles.push({ id: fileId, name });
+            localStorage.setItem(STORAGE_FILES, JSON.stringify(loadedFiles));
+            allRawRecords.push(...newRecords);
+            
+            if (shouldUpdateUI) {
+                updateCoveredDates();
+                processAndDisplay();
+                renderCalendar();
+                showToast(`Carregado: ${name}`);
+            }
         }
 
         async function removeFile(id) {
             const loader = document.getElementById('globalLoader');
+            document.getElementById('globalLoaderTitle').innerText = "Removendo";
+            document.getElementById('progressInfo').innerText = "Aguarde...";
+            document.getElementById('progressBarFill').style.width = "50%";
+            
             loader.classList.replace('hidden', 'flex');
-            document.getElementById('progressInfo').innerText = "Removendo registros...";
-
+            
             await removeFileRecordsFromDB(id);
             allRawRecords = allRawRecords.filter(r => r.file_id !== id);
             loadedFiles = loadedFiles.filter(f => f.id !== id);
-            
             localStorage.setItem(STORAGE_FILES, JSON.stringify(loadedFiles));
             
             updateCoveredDates();
             processAndDisplay();
             renderCalendar();
             
-            loader.classList.replace('flex', 'hidden');
-            showToast("Arquivo removido");
+            document.getElementById('progressBarFill').style.width = "100%";
+            setTimeout(() => {
+                loader.classList.replace('flex', 'hidden');
+                showToast("Arquivo removido");
+            }, 300);
         }
 
         function clearAllData() {
@@ -492,7 +549,7 @@
         }
 
         function exportToExcel() {
-            if(!groupedPeople.length) return showToast("Sem dados para exportar", "error");
+            if(!groupedPeople.length) return showToast("Sem dados", "error");
             const data = groupedPeople.map(p => ({
                 "ID Pessoal": p.id,
                 "Nome": p.nome,
@@ -507,43 +564,28 @@
 
         function showToast(msg, type = 'success') {
             const container = document.getElementById('toastContainer');
-            if (!container) return;
             const toast = document.createElement('div');
-            toast.className = `${type === 'error' ? 'bg-red-600' : 'bg-blue-600'} text-white px-4 py-2 rounded-lg shadow-xl text-xs font-bold transition-all duration-300 transform translate-y-0`;
+            toast.className = `${type === 'error' ? 'bg-red-600' : 'bg-blue-600'} text-white px-4 py-2 rounded-lg shadow-xl text-xs font-bold transition-all duration-300`;
             toast.innerText = msg;
             container.appendChild(toast);
             setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
+                toast.classList.add('opacity-0');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
 
-        document.getElementById('fileInput').onchange = async e => {
-            if (!e.target.files.length) return;
-            const loader = document.getElementById('globalLoader');
-            loader.classList.replace('hidden', 'flex');
-            
-            try {
-                for(let f of e.target.files) {
-                    document.getElementById('progressInfo').innerText = `Lendo ${f.name}...`;
-                    const data = await parseAttendance(f);
-                    if(data.length) await saveRecords(f.name, data);
-                }
-            } catch (err) {
-                console.error(err);
-                showToast("Erro ao carregar ficheiro", "error");
-            } finally {
-                loader.classList.replace('flex', 'hidden');
-                e.target.value = "";
-            }
+        // Eventos
+        document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
+        
+        document.getElementById('dropZone').onclick = () => {
+            const input = document.getElementById('fileInput');
+            input.value = "";
+            input.click();
         };
 
         document.getElementById('controlInput').onchange = e => {
             const f = e.target.files[0];
             if (!f) return;
-            const loader = document.getElementById('globalLoader');
-            loader.classList.replace('hidden', 'flex');
-
             const r = new FileReader();
             r.onload = ev => {
                 try {
@@ -551,30 +593,19 @@
                     const wb = XLSX.read(data, {type: 'binary'});
                     const sheet = wb.Sheets[wb.SheetNames[0]];
                     const json = XLSX.utils.sheet_to_json(sheet, {header: 1});
-                    
-                    const ids = json.slice(1)
-                        .map(row => String(row[0]||"").trim())
-                        .filter(x => x && x !== "" && x !== "ID Pessoal");
-                    
+                    const ids = json.slice(1).map(row => String(row[0]||"").trim()).filter(x => x && x !== "ID Pessoal");
                     allowedIds = new Set(ids);
                     localStorage.setItem(STORAGE_CONTROL, JSON.stringify({ name: f.name, ids: Array.from(allowedIds) }));
-                    
                     document.getElementById('controlFileName').innerText = f.name;
                     document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
                     document.getElementById('controlDetails').classList.remove('hidden');
                     applySearch();
-                    showToast("Controlador atualizado");
-                } catch (err) {
-                    showToast("Erro no controlador", "error");
-                } finally {
-                    loader.classList.replace('flex', 'hidden');
-                }
+                    showToast("Filtro atualizado");
+                } catch (err) { showToast("Erro no controlador", "error"); }
             };
-            r.onerror = () => loader.classList.replace('flex', 'hidden');
             r.readAsBinaryString(f);
         };
 
-        document.getElementById('dropZone').onclick = () => document.getElementById('fileInput').click();
         document.getElementById('dropZoneControl').onclick = () => document.getElementById('controlInput').click();
         document.getElementById('searchInput').oninput = applySearch;
 
@@ -584,7 +615,7 @@
             document.getElementById('controlDetails').classList.add('hidden');
             document.getElementById('controlFileName').innerText = "Selecionar Ficheiro";
             applySearch();
-            showToast("Filtro de sistema removido");
+            showToast("Filtro removido");
         }
     </script>
 </body>
