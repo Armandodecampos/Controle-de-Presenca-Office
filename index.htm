@@ -29,7 +29,7 @@
 </head>
 <body class="min-h-screen font-sans">
     <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
-    
+
     <div id="mainApp" class="max-w-7xl mx-auto py-10 px-4">
         <!-- Loader Global -->
         <div id="globalLoader" class="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-6">
@@ -162,7 +162,7 @@
         const STORAGE_FILES = 'office_attendance_files_v2';
         const STORAGE_CONTROL = 'office_attendance_control_v2';
         let db, loadedFiles = [], allRawRecords = [], allowedIds = new Set(), coveredDates = new Set();
-        
+
         let currentCalendarDate = new Date();
 
         async function initDB() {
@@ -211,7 +211,7 @@
             const loader = document.getElementById('globalLoader');
             const progressFill = document.getElementById('progressBarFill');
             const progressInfo = document.getElementById('progressInfo');
-            
+
             loader.classList.replace('hidden', 'flex');
             progressFill.style.width = '0%';
             progressInfo.innerText = "Lendo arquivos...";
@@ -324,15 +324,29 @@
                 const id = String(r.personal_id).trim();
                 const d = new Date(r.timestamp);
                 if(!personMap.has(id) || d > personMap.get(id).dt) {
-                    personMap.set(id, { 
-                        id, dt: d, 
+                    personMap.set(id, {
+                        id, dt: d,
                         nome: `${r.first_name} ${r.last_name}`.trim(),
                         diff: Math.floor(Math.abs(now - d) / (1000*60*60*24))
                     });
                 }
             });
-            window.groupedPeopleCache = Array.from(personMap.values()).sort((a,b) => b.dt - a.dt);
-            
+
+            // Adicionar pessoas cadastradas que não possuem registros
+            allowedIds.forEach(id => {
+                const idStr = String(id).trim();
+                if (!personMap.has(idStr)) {
+                    personMap.set(idStr, {
+                        id: idStr,
+                        dt: null,
+                        nome: "ID: " + idStr,
+                        diff: null
+                    });
+                }
+            });
+
+            window.groupedPeopleCache = Array.from(personMap.values()).sort((a,b) => (b.dt || 0) - (a.dt || 0));
+
             applySearch();
             renderCalendar();
         }
@@ -340,7 +354,7 @@
         function applySearch() {
             const term = normalizeText(document.getElementById('searchInput').value);
             const filterOn = document.getElementById('toggleControlFilter').checked;
-            
+
             const filtered = (window.groupedPeopleCache || []).filter(p => {
                 const normalizedName = normalizeText(p.nome);
                 const matchTerm = normalizedName.includes(term) || p.id.includes(term);
@@ -356,13 +370,15 @@
                 <tr class="hover:bg-slate-700/30 border-slate-700 border-b last:border-0">
                     <td class="px-6 py-4 font-mono text-[11px] text-slate-500">${p.id}</td>
                     <td class="px-6 py-4 font-bold text-slate-100">${p.nome}</td>
-                    <td class="px-6 py-4 text-xs text-slate-400">${p.dt.toLocaleString('pt-PT')}</td>
+                    <td class="px-6 py-4 text-xs text-slate-400">${p.dt ? p.dt.toLocaleString('pt-PT') : '---'}</td>
                     <td class="px-6 py-4 text-center">
-                        <span class="${p.diff > 7 ? 'text-red-400' : 'text-slate-400'} text-xs">${p.diff === 0 ? 'Hoje' : p.diff + ' dias'}</span>
+                        <span class="${(p.diff === null || p.diff > 7) ? 'text-red-400' : 'text-slate-400'} text-xs">
+                            ${p.diff === null ? 'Sem registro' : (p.diff === 0 ? 'Hoje' : (p.diff === 1 ? '1 dia' : p.diff + ' dias'))}
+                        </span>
                     </td>
                 </tr>`).join('');
 
-            const hasData = allRawRecords.length > 0;
+            const hasData = allRawRecords.length > 0 || allowedIds.size > 0;
             ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.toggle('hidden', !hasData));
             document.getElementById('emptyState').classList.toggle('hidden', hasData);
         }
@@ -377,10 +393,10 @@
             const title = document.getElementById('calendarMonthTitle');
             const y = currentCalendarDate.getFullYear();
             const m = currentCalendarDate.getMonth();
-            
+
             title.innerText = currentCalendarDate.toLocaleString('pt-PT', { month: 'long', year: 'numeric' });
             grid.innerHTML = '';
-            
+
             const weekdays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
             weekdays.forEach(wd => {
                 const el = document.createElement('div');
@@ -446,7 +462,7 @@
          */
         function clearAllData() {
             if(confirm("Tem a certeza que deseja APAGAR DEFINITIVAMENTE todos os registos e configurações?")) {
-                
+
                 // 1. Limpar Memória e UI Imediatamente
                 allRawRecords = [];
                 window.groupedPeopleCache = [];
@@ -484,7 +500,7 @@
                 };
             }
         }
-        
+
         function clearControlFile() {
             if(confirm("Remover lista de pessoas cadastradas?")) {
                 localStorage.removeItem(STORAGE_CONTROL);
@@ -492,7 +508,7 @@
                 document.getElementById('controlFileName').innerText = "Importar";
                 document.getElementById('controlDetails').classList.add('hidden');
                 document.getElementById('toggleControlFilter').checked = false;
-                applySearch();
+                updateStateAndUI();
             }
         }
 
@@ -516,7 +532,7 @@
                 document.getElementById('controlFileName').innerText = f.name;
                 document.getElementById('controlDetails').classList.remove('hidden');
                 document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
-                applySearch();
+                updateStateAndUI();
             };
             r.readAsBinaryString(f);
         };
