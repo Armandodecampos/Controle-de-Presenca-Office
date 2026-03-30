@@ -105,7 +105,12 @@
             </main>
 
             <!-- Barra Lateral -->
-            <aside class="sticky-sidebar space-y-8 order-1 md:order-2">
+            <aside class="sticky-sidebar space-y-6 order-1 md:order-2">
+                <!-- Botão de Limpeza Geral -->
+                <button onclick="clearAllData()" class="w-full py-3 bg-red-900/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all mb-2">
+                    Limpar Todos os Dados
+                </button>
+
                 <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
                     <h2 class="text-[11px] font-black text-blue-500 uppercase tracking-widest mb-4">Pessoas cadastradas no sistema</h2>
                     <div id="dropZoneControl" class="drop-zone rounded-xl p-4 text-center cursor-pointer border-dashed border-2 border-slate-700 hover:border-blue-500">
@@ -145,7 +150,6 @@
                 <div id="fileListSection" class="hidden">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ficheiros Registrados</h3>
-                        <button onclick="clearAllData()" class="text-[9px] text-red-500 hover:underline font-bold uppercase">Reset</button>
                     </div>
                     <div id="fileListContainer" class="flex flex-col gap-2"></div>
                 </div>
@@ -159,10 +163,8 @@
         const STORAGE_CONTROL = 'office_attendance_control_v2';
         let db, loadedFiles = [], allRawRecords = [], allowedIds = new Set(), coveredDates = new Set();
         
-        // Estado do Calendário
         let currentCalendarDate = new Date();
 
-        // Inicialização do Banco
         async function initDB() {
             return new Promise((resolve) => {
                 const request = indexedDB.open(DB_NAME, 1);
@@ -182,7 +184,6 @@
             setupDragAndDrop();
         };
 
-        // Carregamento de dados locais
         async function loadLocalData() {
             loadedFiles = JSON.parse(localStorage.getItem(STORAGE_FILES) || '[]');
             const ctrl = JSON.parse(localStorage.getItem(STORAGE_CONTROL) || 'null');
@@ -201,7 +202,6 @@
             updateStateAndUI();
         }
 
-        // --- CORE: IMPORTAÇÃO DE ALTA VELOCIDADE ---
         async function handleFiles(files) {
             if (!files.length) return;
             const fileArray = Array.from(files);
@@ -211,7 +211,7 @@
             
             loader.classList.replace('hidden', 'flex');
             progressFill.style.width = '0%';
-            progressInfo.innerText = "Lendo arquivos em paralelo...";
+            progressInfo.innerText = "Lendo arquivos...";
 
             let completed = 0;
             const newFilesMetadata = [];
@@ -243,7 +243,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                showToast("Erro no processamento paralelo", "error");
+                showToast("Erro ao processar ficheiros", "error");
             } finally {
                 setTimeout(() => loader.classList.replace('flex', 'hidden'), 500);
                 document.getElementById('fileInput').value = "";
@@ -289,7 +289,6 @@
             });
         }
 
-        // Função para remover acentos e normalizar texto para busca
         function normalizeText(text) {
             return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
         }
@@ -373,15 +372,12 @@
         function renderCalendar() {
             const grid = document.getElementById('calendarDays');
             const title = document.getElementById('calendarMonthTitle');
-            
             const y = currentCalendarDate.getFullYear();
             const m = currentCalendarDate.getMonth();
             
             title.innerText = currentCalendarDate.toLocaleString('pt-PT', { month: 'long', year: 'numeric' });
-            
             grid.innerHTML = '';
             
-            // Dias da semana (Cabeçalho curto)
             const weekdays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
             weekdays.forEach(wd => {
                 const el = document.createElement('div');
@@ -392,11 +388,7 @@
 
             const firstDay = new Date(y, m, 1).getDay();
             const totalDays = new Date(y, m + 1, 0).getDate();
-            
-            // Espaços vazios antes do dia 1
-            for(let i = 0; i < firstDay; i++) {
-                grid.appendChild(document.createElement('div'));
-            }
+            for(let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
 
             for(let i = 1; i <= totalDays; i++){
                 const day = document.createElement('div');
@@ -422,7 +414,7 @@
                     loadedFiles = loadedFiles.filter(f => f.id !== id);
                     localStorage.setItem(STORAGE_FILES, JSON.stringify(loadedFiles));
                     updateStateAndUI();
-                    showToast("Arquivo removido");
+                    showToast("Ficheiro removido");
                 }
             };
         }
@@ -446,13 +438,26 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
-        function clearAllData() { if(confirm("Apagar tudo definitivamente?")) { localStorage.clear(); indexedDB.deleteDatabase(DB_NAME); location.reload(); } }
+        function clearAllData() {
+            if(confirm("Tem a certeza que deseja APAGAR DEFINITIVAMENTE todos os registos e configurações? Esta ação não pode ser revertida.")) {
+                localStorage.clear();
+                const req = indexedDB.deleteDatabase(DB_NAME);
+                req.onsuccess = () => {
+                    showToast("Sistema reiniciado!");
+                    setTimeout(() => location.reload(), 1000);
+                };
+                req.onerror = () => {
+                    showToast("Erro ao limpar banco", "error");
+                    location.reload();
+                };
+            }
+        }
         
         function clearControlFile() {
             if(confirm("Remover lista de pessoas cadastradas?")) {
                 localStorage.removeItem(STORAGE_CONTROL);
                 allowedIds = new Set();
-                document.getElementById('controlFileName').innerText = "Carregar Base (XLSX)";
+                document.getElementById('controlFileName').innerText = "Importar";
                 document.getElementById('controlDetails').classList.add('hidden');
                 document.getElementById('toggleControlFilter').checked = false;
                 applySearch();
@@ -460,7 +465,7 @@
         }
 
         function exportToExcel() {
-            const ws = XLSX.utils.json_to_sheet(window.groupedPeopleCache.map(p => ({ "ID": p.id, "Nome": p.nome, "Data": p.dt, "Ausência": p.diff })));
+            const ws = XLSX.utils.json_to_sheet(window.groupedPeopleCache.map(p => ({ "ID": p.id, "Nome": p.nome, "Última Presença": p.dt, "Dias de Ausência": p.diff })));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Relatório");
             XLSX.writeFile(wb, "Relatorio_Presenca.xlsx");
