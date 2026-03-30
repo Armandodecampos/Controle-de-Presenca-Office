@@ -308,7 +308,7 @@
             container.innerHTML = '';
             if(loadedFiles.length) {
                 document.getElementById('fileListSection').classList.remove('hidden');
-                loadedFiles.forEach(f => {
+                [...loadedFiles].sort((a, b) => a.name.localeCompare(b.name)).forEach(f => {
                     const div = document.createElement('div');
                     div.className = "flex items-center justify-between bg-slate-800 p-2 rounded-lg border border-slate-700 text-[10px]";
                     div.innerHTML = `<span class="truncate pr-2">${f.name}</span><button onclick="removeFile('${f.id}')" class="text-red-400 hover:text-white px-2 font-bold">X</button>`;
