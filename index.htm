@@ -3,25 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Presença Office - Local</title>
-    <!-- Bibliotecas Externas -->
+    <title>Controle de Presença Office</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { background-color: #0f172a; color: #f1f5f9; }
         .drop-zone { border: 2px dashed #334155; transition: all 0.3s ease; background-color: #1e293b; }
-        .drop-zone.drag-over { 
-            border-color: #3b82f6; 
-            background-color: #1e293b; 
-            transform: scale(1.02);
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
-        }
+        .drop-zone.drag-over { border-color: #3b82f6; background-color: #1e293b; transform: scale(1.02); box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+        .progress-bar-container { width: 100%; height: 8px; background-color: #334155; border-radius: 10px; overflow: hidden; margin-top: 15px; }
+        .progress-bar-fill { height: 100%; background-color: #3b82f6; width: 0%; transition: width 0.1s linear; }
         @media (min-width: 768px) {
             .app-grid { display: grid; grid-template-columns: 1fr 350px; gap: 2rem; align-items: start; }
             .sticky-sidebar { position: sticky; top: 2rem; max-height: calc(100vh - 4rem); overflow-y: auto; }
         }
-        .progress-bar-container { width: 100%; height: 8px; background-color: #334155; border-radius: 10px; overflow: hidden; margin-top: 15px; }
-        .progress-bar-fill { height: 100%; background-color: #3b82f6; width: 0%; transition: width 0.3s ease-out; }
         .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 34px; }
@@ -29,21 +23,20 @@
         input:checked + .slider { background-color: #3b82f6; }
         input:checked + .slider:before { transform: translateX(22px); }
         .calendar-day { aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; font-size: 10px; border-radius: 6px; }
-        .day-active { background-color: #3b82f6; color: white; font-weight: bold; box-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
-        .nav-btn { cursor: pointer; padding: 4px; border-radius: 4px; transition: background 0.2s; }
-        .nav-btn:hover { background-color: #334155; }
+        .day-active { background-color: #3b82f6; color: white; font-weight: bold; }
+        .day-dimmed { color: #334155; }
     </style>
 </head>
 <body class="min-h-screen font-sans">
     <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
     
     <div id="mainApp" class="max-w-7xl mx-auto py-10 px-4">
-        <!-- Loader Global com Barra de Progresso Real -->
-        <div id="globalLoader" class="fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-6">
+        <!-- Loader Global Otimizado -->
+        <div id="globalLoader" class="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-6">
             <div class="bg-slate-800 border border-slate-700 rounded-2xl p-10 max-w-sm w-full shadow-2xl text-center">
                 <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-                <h2 id="globalLoaderTitle" class="text-slate-100 font-bold mb-2 uppercase tracking-widest text-sm">Importando</h2>
-                <div id="progressInfo" class="text-[11px] text-slate-400 font-mono mb-1">Iniciando...</div>
+                <h2 id="globalLoaderTitle" class="text-slate-100 font-bold mb-2 uppercase tracking-widest text-sm">Processando</h2>
+                <div id="progressInfo" class="text-[11px] text-slate-400 font-mono mb-1">Aguarde...</div>
                 <div class="progress-bar-container">
                     <div id="progressBarFill" class="progress-bar-fill"></div>
                 </div>
@@ -56,7 +49,6 @@
                 <h1 class="text-3xl font-bold text-slate-100">Presença Office</h1>
                 <div class="flex flex-col mt-3">
                     <button onclick="exportToExcel()" class="w-fit flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all shadow-lg shadow-emerald-900/20">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Exportar Relatório Excel
                     </button>
                 </div>
@@ -87,7 +79,7 @@
                 </div>
 
                 <div id="searchContainer" class="hidden">
-                    <input type="text" id="searchInput" placeholder="Pesquisar por nome ou ID..." class="w-full px-5 py-3 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    <input type="text" id="searchInput" placeholder="Pesquisar por nome (ex: Jose) ou ID..." class="w-full px-5 py-3 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                 </div>
 
                 <div id="tableContainer" class="hidden bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
@@ -108,18 +100,17 @@
 
                 <div id="emptyState" class="bg-slate-800 rounded-xl p-12 text-center border border-slate-700">
                     <h3 class="text-slate-100 font-bold">Nenhum dado armazenado</h3>
-                    <p class="text-slate-400 text-sm mt-2">Arraste os arquivos de presença para a zona de carregamento.</p>
+                    <p class="text-slate-400 text-sm mt-2">Arraste os arquivos para começar o processamento.</p>
                 </div>
             </main>
 
             <!-- Barra Lateral -->
             <aside class="sticky-sidebar space-y-8 order-1 md:order-2">
-                <!-- Importar Pessoas Cadastradas -->
                 <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
-                    <h2 class="text-[11px] font-black text-blue-500 uppercase tracking-widest mb-4 leading-tight">Lista de IDs do Sistema</h2>
-                    <div id="dropZoneControl" class="drop-zone rounded-xl p-4 text-center cursor-pointer border-dashed border-2 border-slate-700 hover:border-blue-500 bg-slate-900/30">
+                    <h2 class="text-[11px] font-black text-blue-500 uppercase tracking-widest mb-4">Pessoas cadastradas no sistema</h2>
+                    <div id="dropZoneControl" class="drop-zone rounded-xl p-4 text-center cursor-pointer border-dashed border-2 border-slate-700 hover:border-blue-500">
                         <input type="file" id="controlInput" accept=".xlsx, .xls, .csv" class="hidden">
-                        <span id="controlFileName" class="text-[11px] font-bold text-slate-300">Selecionar Ficheiro</span>
+                        <span id="controlFileName" class="text-[11px] font-bold text-slate-300">Carregar Base (XLSX)</span>
                     </div>
                     <div id="controlDetails" class="hidden mt-3 text-[10px] text-slate-500 flex justify-between">
                         <span id="controlCountText">0 IDs</span>
@@ -127,40 +118,34 @@
                     </div>
                 </div>
 
-                <!-- Calendário -->
                 <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest">Cobertura</h2>
-                        <div class="flex items-center gap-2">
-                            <button onclick="changeMonth(-1)" class="nav-btn text-slate-400 hover:text-white">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="15 18 9 12 15 6"/></svg>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest">Cobertura Mensal</h2>
+                        <div class="flex gap-2">
+                            <button onclick="changeMonth(-1)" class="p-1 hover:bg-slate-700 rounded text-slate-400 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                             </button>
-                            <span id="currentCalendarMonth" class="text-[10px] font-bold text-slate-200 min-w-[80px] text-center">---</span>
-                            <button onclick="changeMonth(1)" class="nav-btn text-slate-400 hover:text-white">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"/></svg>
+                            <button onclick="changeMonth(1)" class="p-1 hover:bg-slate-700 rounded text-slate-400 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             </button>
                         </div>
                     </div>
+                    <div id="calendarMonthTitle" class="text-[10px] font-bold text-blue-500 uppercase mb-3 text-center"></div>
                     <div id="calendarDays" class="grid grid-cols-7 gap-1"></div>
-                    <div class="mt-2 text-center">
-                        <button onclick="resetToCurrentMonth()" class="text-[9px] text-blue-500 hover:underline uppercase font-bold">Mês Atual</button>
-                    </div>
                 </div>
 
-                <!-- Importar Registros -->
                 <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
-                    <h2 class="text-[11px] font-black text-blue-500 uppercase tracking-widest mb-4 leading-tight">Importar Registros</h2>
+                    <h2 class="text-[11px] font-black text-blue-500 uppercase tracking-widest mb-4">Registros no sistema</h2>
                     <div id="dropZone" class="drop-zone rounded-xl p-6 text-center cursor-pointer border-2 border-slate-700 border-dashed hover:border-blue-500">
                         <input type="file" id="fileInput" multiple accept=".csv, .xlsx, .xls" class="hidden">
-                        <p class="text-slate-200 font-bold text-sm">Carregar Arquivos</p>
-                        <p class="text-[10px] text-slate-500 mt-1">Clique ou Arraste múltiplos arquivos</p>
+                        <p class="text-slate-200 font-bold text-sm">Importação em Lote</p>
                     </div>
                 </div>
 
                 <div id="fileListSection" class="hidden">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Arquivos Ativos</h3>
-                        <button onclick="clearAllData()" class="text-[9px] text-red-500 hover:underline uppercase font-bold">Limpar Tudo</button>
+                        <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ficheiros Registrados</h3>
+                        <button onclick="clearAllData()" class="text-[9px] text-red-500 hover:underline font-bold uppercase">Reset</button>
                     </div>
                     <div id="fileListContainer" class="flex flex-col gap-2"></div>
                 </div>
@@ -170,453 +155,335 @@
 
     <script>
         const DB_NAME = 'PresenceOfficeDB';
-        const DB_VERSION = 1;
-        let db;
+        const STORAGE_FILES = 'office_attendance_files_v2';
+        const STORAGE_CONTROL = 'office_attendance_control_v2';
+        let db, loadedFiles = [], allRawRecords = [], allowedIds = new Set(), coveredDates = new Set();
+        
+        // Estado do Calendário
+        let currentCalendarDate = new Date();
 
-        const STORAGE_FILES = 'office_attendance_files_v1';
-        const STORAGE_CONTROL = 'office_attendance_control_v1';
-
-        let loadedFiles = [], allRawRecords = [], allowedIds = new Set(), coveredDates = new Set();
-        let groupedPeople = [];
-        let currentViewDate = new Date();
-
+        // Inicialização do Banco
         async function initDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
+            return new Promise((resolve) => {
+                const request = indexedDB.open(DB_NAME, 1);
                 request.onupgradeneeded = (e) => {
                     const database = e.target.result;
                     if (!database.objectStoreNames.contains('records')) {
                         database.createObjectStore('records', { keyPath: 'id', autoIncrement: true });
                     }
                 };
-                request.onsuccess = (e) => {
-                    db = e.target.result;
-                    resolve(db);
-                };
-                request.onerror = (e) => reject(e);
+                request.onsuccess = (e) => { db = e.target.result; resolve(); };
             });
         }
 
-        window.onload = async () => { 
+        window.onload = async () => {
             await initDB();
-            loadLocalData(); 
-            renderCalendar(); 
+            await loadLocalData();
             setupDragAndDrop();
         };
 
-        function setupDragAndDrop() {
-            const zone = document.getElementById('dropZone');
-            
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                zone.addEventListener(eventName, e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }, false);
-            });
-
-            ['dragenter', 'dragover'].forEach(eventName => {
-                zone.addEventListener(eventName, () => zone.classList.add('drag-over'), false);
-            });
-
-            ['dragleave', 'drop'].forEach(eventName => {
-                zone.addEventListener(eventName, () => zone.classList.remove('drag-over'), false);
-            });
-
-            zone.addEventListener('drop', e => {
-                const files = e.dataTransfer.files;
-                if (files.length) handleFiles(files);
-            }, false);
-        }
-
-        function removeAccents(str) {
-            if (!str) return "";
-            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        }
-
-        function excelDateToJSDate(serial) {
-            if (serial instanceof Date) return serial;
-            const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
-            return isNaN(date.getTime()) ? null : date;
-        }
-
+        // Carregamento de dados locais
         async function loadLocalData() {
-            try {
-                loadedFiles = JSON.parse(localStorage.getItem(STORAGE_FILES) || '[]');
-                const ctrl = JSON.parse(localStorage.getItem(STORAGE_CONTROL) || 'null');
-                
-                if(ctrl) {
-                    allowedIds = new Set(ctrl.ids);
-                    document.getElementById('controlFileName').innerText = ctrl.name;
-                    document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
-                    document.getElementById('controlDetails').classList.remove('hidden');
-                }
-                allRawRecords = await getAllRecordsFromDB();
-                updateCoveredDates();
-                processAndDisplay();
-            } catch(e) { console.error(e); }
+            loadedFiles = JSON.parse(localStorage.getItem(STORAGE_FILES) || '[]');
+            const ctrl = JSON.parse(localStorage.getItem(STORAGE_CONTROL) || 'null');
+            if(ctrl) {
+                allowedIds = new Set(ctrl.ids);
+                document.getElementById('controlFileName').innerText = ctrl.name;
+                document.getElementById('controlDetails').classList.remove('hidden');
+                document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
+            }
+            allRawRecords = await new Promise(res => {
+                const tx = db.transaction(['records'], 'readonly');
+                const store = tx.objectStore('records');
+                const req = store.getAll();
+                req.onsuccess = () => res(req.result || []);
+            });
+            updateStateAndUI();
         }
 
-        async function getAllRecordsFromDB() {
-            return new Promise((resolve) => {
-                const transaction = db.transaction(['records'], 'readonly');
-                const store = transaction.objectStore('records');
-                const request = store.getAll();
-                request.onsuccess = () => resolve(request.result || []);
+        // --- CORE: IMPORTAÇÃO DE ALTA VELOCIDADE ---
+        async function handleFiles(files) {
+            if (!files.length) return;
+            const fileArray = Array.from(files);
+            const loader = document.getElementById('globalLoader');
+            const progressFill = document.getElementById('progressBarFill');
+            const progressInfo = document.getElementById('progressInfo');
+            
+            loader.classList.replace('hidden', 'flex');
+            progressFill.style.width = '0%';
+            progressInfo.innerText = "Lendo arquivos em paralelo...";
+
+            let completed = 0;
+            const newFilesMetadata = [];
+            const allNewData = [];
+
+            try {
+                await Promise.all(fileArray.map(async (file) => {
+                    const data = await parseExcelFast(file);
+                    if (data.length > 0) {
+                        const fileId = 'f' + Date.now() + Math.random().toString(16).slice(2,8);
+                        newFilesMetadata.push({ id: fileId, name: file.name });
+                        data.forEach(item => {
+                            item.file_id = fileId;
+                            allNewData.push(item);
+                        });
+                    }
+                    completed++;
+                    progressFill.style.width = `${(completed / fileArray.length) * 100}%`;
+                }));
+
+                if (allNewData.length > 0) {
+                    progressInfo.innerText = `Gravando ${allNewData.length} registros...`;
+                    await bulkInsertRecords(allNewData);
+                    loadedFiles.push(...newFilesMetadata);
+                    localStorage.setItem(STORAGE_FILES, JSON.stringify(loadedFiles));
+                    allRawRecords.push(...allNewData);
+                    updateStateAndUI();
+                    showToast(`${allNewData.length} registros importados.`);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Erro no processamento paralelo", "error");
+            } finally {
+                setTimeout(() => loader.classList.replace('flex', 'hidden'), 500);
+                document.getElementById('fileInput').value = "";
+            }
+        }
+
+        async function parseExcelFast(file) {
+            return new Promise(res => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
+                        const sheet = wb.Sheets[wb.SheetNames[0]];
+                        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                        const headerIdx = json.findIndex(r => r && r.some(c => String(c).includes('ID Pessoal')));
+                        if(headerIdx === -1) return res([]);
+                        const results = [];
+                        for(let i = headerIdx + 1; i < json.length; i++) {
+                            const row = json[i];
+                            if(row && row[6] && row[1]) {
+                                results.push({
+                                    personal_id: String(row[6]).trim(),
+                                    timestamp: row[1] instanceof Date ? row[1] : new Date(row[1]),
+                                    first_name: row[7] || '',
+                                    last_name: row[8] || ''
+                                });
+                            }
+                        }
+                        res(results);
+                    } catch { res([]); }
+                };
+                reader.readAsBinaryString(file);
             });
         }
 
-        async function addRecordsToDB(records) {
+        async function bulkInsertRecords(records) {
             return new Promise((resolve, reject) => {
                 const transaction = db.transaction(['records'], 'readwrite');
                 const store = transaction.objectStore('records');
                 records.forEach(r => store.add(r));
                 transaction.oncomplete = () => resolve();
-                transaction.onerror = (e) => reject(e);
+                transaction.onerror = reject;
             });
         }
 
-        async function removeFileRecordsFromDB(fileId) {
-            return new Promise((resolve) => {
-                const transaction = db.transaction(['records'], 'readwrite');
-                const store = transaction.objectStore('records');
-                const request = store.openCursor();
-                request.onsuccess = (e) => {
-                    const cursor = e.target.result;
-                    if (cursor) {
-                        if (cursor.value.file_id === fileId) cursor.delete();
-                        cursor.continue();
-                    } else resolve();
-                };
-            });
+        // Função para remover acentos e normalizar texto para busca
+        function normalizeText(text) {
+            return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
         }
 
-        function updateCoveredDates() {
+        function updateStateAndUI() {
             coveredDates.clear();
             allRawRecords.forEach(r => {
                 const d = new Date(r.timestamp);
-                if(!isNaN(d)) {
-                    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                    coveredDates.add(key);
-                }
+                const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                coveredDates.add(key);
             });
-        }
 
-        function processAndDisplay() {
             const container = document.getElementById('fileListContainer');
             container.innerHTML = '';
-            
             if(loadedFiles.length) {
                 document.getElementById('fileListSection').classList.remove('hidden');
                 loadedFiles.forEach(f => {
                     const div = document.createElement('div');
                     div.className = "flex items-center justify-between bg-slate-800 p-2 rounded-lg border border-slate-700 text-[10px]";
-                    div.innerHTML = `<span class="truncate pr-2">${f.name}</span><button onclick="removeFile('${f.id}')" class="text-red-400 hover:text-red-300 font-bold px-2">X</button>`;
+                    div.innerHTML = `<span class="truncate pr-2">${f.name}</span><button onclick="removeFile('${f.id}')" class="text-red-400 hover:text-white px-2 font-bold">X</button>`;
                     container.appendChild(div);
                 });
             } else {
                 document.getElementById('fileListSection').classList.add('hidden');
             }
 
-            if(!allRawRecords.length) {
-                ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.add('hidden'));
-                document.getElementById('emptyState').classList.remove('hidden');
-                return;
-            }
-
-            document.getElementById('emptyState').classList.add('hidden');
             const personMap = new Map();
             const now = new Date();
-
             allRawRecords.forEach(r => {
                 const id = String(r.personal_id).trim();
                 const d = new Date(r.timestamp);
                 if(!personMap.has(id) || d > personMap.get(id).dt) {
                     personMap.set(id, { 
-                        id, 
-                        dt: d, 
-                        nome: `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Sem Nome',
+                        id, dt: d, 
+                        nome: `${r.first_name} ${r.last_name}`.trim(),
                         diff: Math.floor(Math.abs(now - d) / (1000*60*60*24))
                     });
                 }
             });
-
-            groupedPeople = Array.from(personMap.values()).sort((a,b) => b.dt - a.dt);
+            window.groupedPeopleCache = Array.from(personMap.values()).sort((a,b) => b.dt - a.dt);
+            
             applySearch();
+            renderCalendar();
         }
 
         function applySearch() {
-            const termRaw = document.getElementById('searchInput').value.toLowerCase();
-            const term = removeAccents(termRaw);
+            const term = normalizeText(document.getElementById('searchInput').value);
             const filterOn = document.getElementById('toggleControlFilter').checked;
             
-            const filtered = groupedPeople.filter(p => {
-                const normalizedName = removeAccents(p.nome.toLowerCase());
+            const filtered = (window.groupedPeopleCache || []).filter(p => {
+                const normalizedName = normalizeText(p.nome);
                 const matchTerm = normalizedName.includes(term) || p.id.includes(term);
                 const matchControl = filterOn ? allowedIds.has(p.id) : true;
                 return matchTerm && matchControl;
             });
-            
-            document.getElementById('statUnique').innerText = filtered.length.toLocaleString();
-            document.getElementById('statTotal').innerText = allRawRecords.length.toLocaleString();
-            
+
+            document.getElementById('statUnique').innerText = filtered.length;
+            document.getElementById('statTotal').innerText = allRawRecords.length;
+
             const tbody = document.getElementById('dataTableBody');
-            tbody.innerHTML = '';
-            
-            filtered.forEach(p => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-700/30 border-slate-700";
-                tr.innerHTML = `
+            tbody.innerHTML = filtered.map(p => `
+                <tr class="hover:bg-slate-700/30 border-slate-700 border-b last:border-0">
                     <td class="px-6 py-4 font-mono text-[11px] text-slate-500">${p.id}</td>
                     <td class="px-6 py-4 font-bold text-slate-100">${p.nome}</td>
                     <td class="px-6 py-4 text-xs text-slate-400">${p.dt.toLocaleString('pt-PT')}</td>
                     <td class="px-6 py-4 text-center">
-                        <span class="${p.diff > 7 ? 'text-red-400' : 'text-slate-400'} text-xs">
-                            ${p.diff === 0 ? 'Hoje' : p.diff + ' dias'}
-                        </span>
-                    </td>`;
-                tbody.appendChild(tr);
-            });
-            
-            ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+                        <span class="${p.diff > 7 ? 'text-red-400' : 'text-slate-400'} text-xs">${p.diff === 0 ? 'Hoje' : p.diff + ' dias'}</span>
+                    </td>
+                </tr>`).join('');
+
+            const hasData = allRawRecords.length > 0;
+            ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.toggle('hidden', !hasData));
+            document.getElementById('emptyState').classList.toggle('hidden', hasData);
         }
 
-        function changeMonth(step) {
-            currentViewDate.setMonth(currentViewDate.getMonth() + step);
-            renderCalendar();
-        }
-
-        function resetToCurrentMonth() {
-            currentViewDate = new Date();
+        function changeMonth(delta) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
             renderCalendar();
         }
 
         function renderCalendar() {
-            const y = currentViewDate.getFullYear();
-            const m = currentViewDate.getMonth();
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const grid = document.getElementById('calendarDays');
+            const title = document.getElementById('calendarMonthTitle');
             
-            const calMonthSpan = document.getElementById('currentCalendarMonth');
-            if (calMonthSpan) calMonthSpan.innerText = `${meses[m]} ${y}`;
+            const y = currentCalendarDate.getFullYear();
+            const m = currentCalendarDate.getMonth();
             
-            const grid = document.getElementById('calendarDays'); 
-            if (!grid) return;
+            title.innerText = currentCalendarDate.toLocaleString('pt-PT', { month: 'long', year: 'numeric' });
+            
             grid.innerHTML = '';
             
+            // Dias da semana (Cabeçalho curto)
+            const weekdays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+            weekdays.forEach(wd => {
+                const el = document.createElement('div');
+                el.className = "text-[8px] font-black text-slate-500 text-center mb-1";
+                el.innerText = wd;
+                grid.appendChild(el);
+            });
+
+            const firstDay = new Date(y, m, 1).getDay();
             const totalDays = new Date(y, m + 1, 0).getDate();
+            
+            // Espaços vazios antes do dia 1
+            for(let i = 0; i < firstDay; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
             for(let i = 1; i <= totalDays; i++){
                 const day = document.createElement('div');
-                day.className = 'calendar-day text-slate-600 border border-slate-800/50';
+                const key = `${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                const isCovered = coveredDates.has(key);
+                day.className = `calendar-day border border-slate-800/50 ${isCovered ? 'day-active' : 'text-slate-600'}`;
                 day.innerText = i;
-                const dateKey = `${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-                if(coveredDates.has(dateKey)) {
-                    day.classList.add('day-active');
-                    day.classList.remove('text-slate-600');
-                }
                 grid.appendChild(day);
             }
         }
 
-        async function parseAttendance(file) {
-            return new Promise(res => {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    try {
-                        const data = e.target.result;
-                        const wb = XLSX.read(data, { type: 'binary', cellDates: true });
-                        const sheet = wb.Sheets[wb.SheetNames[0]];
-                        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                        
-                        const idx = json.findIndex(row => row && row.some(c => String(c).includes('ID Pessoal')));
-                        if(idx === -1) return res([]);
-                        
-                        const rows = json.slice(idx + 1).map(row => {
-                            let ts = row[1];
-                            if (typeof ts === 'number') ts = excelDateToJSDate(ts);
-                            return {
-                                personal_id: String(row[6] || "").trim(),
-                                timestamp: ts,
-                                first_name: row[7] || '',
-                                last_name: row[8] || ''
-                            };
-                        }).filter(x => x.personal_id && x.timestamp && !isNaN(new Date(x.timestamp).getTime()));
-                        res(rows);
-                    } catch(err) { res([]); }
-                };
-                reader.onerror = () => res([]);
-                reader.readAsBinaryString(file);
-            });
-        }
-
-        async function handleFiles(files) {
-            if (!files || files.length === 0) return;
-            
-            const loader = document.getElementById('globalLoader');
-            const loaderTitle = document.getElementById('globalLoaderTitle');
-            const progressFill = document.getElementById('progressBarFill');
-            const progressInfo = document.getElementById('progressInfo');
-            
-            loader.classList.replace('hidden', 'flex');
-            progressFill.style.width = "0%";
-            
-            const total = files.length;
-            let successCount = 0;
-
-            for(let i = 0; i < total; i++) {
-                const f = files[i];
-                const currentFileIndex = i + 1;
-                
-                // Atualiza progresso da UI
-                loaderTitle.innerText = `Importando (${currentFileIndex}/${total})`;
-                progressInfo.innerText = f.name;
-                
-                try {
-                    const data = await parseAttendance(f);
-                    if(data.length) {
-                        await saveRecords(f.name, data, false); // Passa false para não renderizar a cada arquivo
-                        successCount++;
-                    }
-                } catch (err) {
-                    console.error("Erro no arquivo:", f.name, err);
-                }
-                
-                // Calcula porcentagem e atualiza barra
-                const percentage = Math.round((currentFileIndex / total) * 100);
-                progressFill.style.width = `${percentage}%`;
-                
-                // Pequeno delay para suavizar animação em arquivos muito leves
-                await new Promise(r => setTimeout(r, 100));
-            }
-
-            // Renderização final após todos os arquivos
-            updateCoveredDates();
-            processAndDisplay();
-            renderCalendar();
-            
-            setTimeout(() => {
-                loader.classList.replace('flex', 'hidden');
-                document.getElementById('fileInput').value = "";
-                showToast(`${successCount} arquivos importados com sucesso!`);
-            }, 500);
-        }
-
-        async function saveRecords(name, data, shouldUpdateUI = true) {
-            const fileId = 'f' + Date.now() + Math.random().toString(16).slice(2, 8);
-            const newRecords = data.map(d => ({ ...d, file_id: fileId }));
-            await addRecordsToDB(newRecords);
-
-            loadedFiles.push({ id: fileId, name });
-            localStorage.setItem(STORAGE_FILES, JSON.stringify(loadedFiles));
-            allRawRecords.push(...newRecords);
-            
-            if (shouldUpdateUI) {
-                updateCoveredDates();
-                processAndDisplay();
-                renderCalendar();
-                showToast(`Carregado: ${name}`);
-            }
-        }
-
         async function removeFile(id) {
-            const loader = document.getElementById('globalLoader');
-            document.getElementById('globalLoaderTitle').innerText = "Removendo";
-            document.getElementById('progressInfo').innerText = "Aguarde...";
-            document.getElementById('progressBarFill').style.width = "50%";
-            
-            loader.classList.replace('hidden', 'flex');
-            
-            await removeFileRecordsFromDB(id);
-            allRawRecords = allRawRecords.filter(r => r.file_id !== id);
-            loadedFiles = loadedFiles.filter(f => f.id !== id);
-            localStorage.setItem(STORAGE_FILES, JSON.stringify(loadedFiles));
-            
-            updateCoveredDates();
-            processAndDisplay();
-            renderCalendar();
-            
-            document.getElementById('progressBarFill').style.width = "100%";
-            setTimeout(() => {
-                loader.classList.replace('flex', 'hidden');
-                showToast("Arquivo removido");
-            }, 300);
+            const tx = db.transaction(['records'], 'readwrite');
+            const store = tx.objectStore('records');
+            const cursorReq = store.openCursor();
+            cursorReq.onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    if (cursor.value.file_id === id) cursor.delete();
+                    cursor.continue();
+                } else {
+                    allRawRecords = allRawRecords.filter(r => r.file_id !== id);
+                    loadedFiles = loadedFiles.filter(f => f.id !== id);
+                    localStorage.setItem(STORAGE_FILES, JSON.stringify(loadedFiles));
+                    updateStateAndUI();
+                    showToast("Arquivo removido");
+                }
+            };
         }
 
-        function clearAllData() {
-            if(confirm("Deseja apagar TODOS os dados carregados?")) {
-                localStorage.clear();
-                const req = indexedDB.deleteDatabase(DB_NAME);
-                req.onsuccess = () => location.reload();
+        function setupDragAndDrop() {
+            const zone = document.getElementById('dropZone');
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => zone.addEventListener(e, (ev) => {
+                ev.preventDefault();
+                zone.classList.toggle('drag-over', e === 'dragenter' || e === 'dragover');
+                if(e === 'drop') handleFiles(ev.dataTransfer.files);
+            }));
+            zone.onclick = () => document.getElementById('fileInput').click();
+            document.getElementById('fileInput').onchange = (e) => handleFiles(e.target.files);
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `${type === 'error' ? 'bg-red-600' : 'bg-blue-600'} text-white px-4 py-2 rounded-lg shadow-xl text-[10px] font-bold`;
+            toast.innerText = msg;
+            document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function clearAllData() { if(confirm("Apagar tudo definitivamente?")) { localStorage.clear(); indexedDB.deleteDatabase(DB_NAME); location.reload(); } }
+        
+        function clearControlFile() {
+            if(confirm("Remover lista de pessoas cadastradas?")) {
+                localStorage.removeItem(STORAGE_CONTROL);
+                allowedIds = new Set();
+                document.getElementById('controlFileName').innerText = "Carregar Base (XLSX)";
+                document.getElementById('controlDetails').classList.add('hidden');
+                document.getElementById('toggleControlFilter').checked = false;
+                applySearch();
             }
         }
 
         function exportToExcel() {
-            if(!groupedPeople.length) return showToast("Sem dados", "error");
-            const data = groupedPeople.map(p => ({
-                "ID Pessoal": p.id,
-                "Nome": p.nome,
-                "Último Acesso": p.dt.toLocaleString('pt-PT'),
-                "Dias de Ausência": p.diff
-            }));
-            const ws = XLSX.utils.json_to_sheet(data);
+            const ws = XLSX.utils.json_to_sheet(window.groupedPeopleCache.map(p => ({ "ID": p.id, "Nome": p.nome, "Data": p.dt, "Ausência": p.diff })));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Relatório");
-            XLSX.writeFile(wb, `Relatorio_Presenca_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.writeFile(wb, "Relatorio_Presenca.xlsx");
         }
 
-        function showToast(msg, type = 'success') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            toast.className = `${type === 'error' ? 'bg-red-600' : 'bg-blue-600'} text-white px-4 py-2 rounded-lg shadow-xl text-xs font-bold transition-all duration-300`;
-            toast.innerText = msg;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.classList.add('opacity-0');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        // Eventos
-        document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
-        
-        document.getElementById('dropZone').onclick = () => {
-            const input = document.getElementById('fileInput');
-            input.value = "";
-            input.click();
-        };
-
+        document.getElementById('searchInput').oninput = applySearch;
         document.getElementById('controlInput').onchange = e => {
             const f = e.target.files[0];
-            if (!f) return;
             const r = new FileReader();
             r.onload = ev => {
-                try {
-                    const data = ev.target.result;
-                    const wb = XLSX.read(data, {type: 'binary'});
-                    const sheet = wb.Sheets[wb.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(sheet, {header: 1});
-                    const ids = json.slice(1).map(row => String(row[0]||"").trim()).filter(x => x && x !== "ID Pessoal");
-                    allowedIds = new Set(ids);
-                    localStorage.setItem(STORAGE_CONTROL, JSON.stringify({ name: f.name, ids: Array.from(allowedIds) }));
-                    document.getElementById('controlFileName').innerText = f.name;
-                    document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
-                    document.getElementById('controlDetails').classList.remove('hidden');
-                    applySearch();
-                    showToast("Filtro atualizado");
-                } catch (err) { showToast("Erro no controlador", "error"); }
+                const wb = XLSX.read(ev.target.result, {type: 'binary'});
+                const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
+                const ids = json.slice(1).map(row => String(row[0]||"").trim()).filter(x => x && x !== "ID Pessoal");
+                allowedIds = new Set(ids);
+                localStorage.setItem(STORAGE_CONTROL, JSON.stringify({ name: f.name, ids: Array.from(allowedIds) }));
+                document.getElementById('controlFileName').innerText = f.name;
+                document.getElementById('controlDetails').classList.remove('hidden');
+                document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
+                applySearch();
             };
             r.readAsBinaryString(f);
         };
-
         document.getElementById('dropZoneControl').onclick = () => document.getElementById('controlInput').click();
-        document.getElementById('searchInput').oninput = applySearch;
-
-        function clearControlFile() {
-            localStorage.removeItem(STORAGE_CONTROL);
-            allowedIds = new Set();
-            document.getElementById('controlDetails').classList.add('hidden');
-            document.getElementById('controlFileName').innerText = "Selecionar Ficheiro";
-            applySearch();
-            showToast("Filtro removido");
-        }
     </script>
 </body>
 </html>
