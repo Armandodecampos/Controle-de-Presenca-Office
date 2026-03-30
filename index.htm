@@ -31,7 +31,7 @@
     <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
     
     <div id="mainApp" class="max-w-7xl mx-auto py-10 px-4">
-        <!-- Loader Global Otimizado -->
+        <!-- Loader Global -->
         <div id="globalLoader" class="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-6">
             <div class="bg-slate-800 border border-slate-700 rounded-2xl p-10 max-w-sm w-full shadow-2xl text-center">
                 <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
@@ -193,12 +193,15 @@
                 document.getElementById('controlDetails').classList.remove('hidden');
                 document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
             }
-            allRawRecords = await new Promise(res => {
-                const tx = db.transaction(['records'], 'readonly');
-                const store = tx.objectStore('records');
-                const req = store.getAll();
-                req.onsuccess = () => res(req.result || []);
-            });
+            if (db) {
+                allRawRecords = await new Promise(res => {
+                    const tx = db.transaction(['records'], 'readonly');
+                    const store = tx.objectStore('records');
+                    const req = store.getAll();
+                    req.onsuccess = () => res(req.result || []);
+                    req.onerror = () => res([]);
+                });
+            }
             updateStateAndUI();
         }
 
@@ -438,17 +441,46 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
+        /**
+         * FUNÇÃO CORRIGIDA: Limpa todos os dados
+         */
         function clearAllData() {
-            if(confirm("Tem a certeza que deseja APAGAR DEFINITIVAMENTE todos os registos e configurações? Esta ação não pode ser revertida.")) {
+            if(confirm("Tem a certeza que deseja APAGAR DEFINITIVAMENTE todos os registos e configurações?")) {
+                
+                // 1. Limpar Memória e UI Imediatamente
+                allRawRecords = [];
+                window.groupedPeopleCache = [];
+                loadedFiles = [];
+                allowedIds = new Set();
+                coveredDates.clear();
+                updateStateAndUI();
+
+                // 2. Limpar LocalStorage
                 localStorage.clear();
-                const req = indexedDB.deleteDatabase(DB_NAME);
-                req.onsuccess = () => {
-                    showToast("Sistema reiniciado!");
+
+                // 3. Fechar a ligação da DB antes de tentar apagá-la
+                if (db) {
+                    db.close();
+                }
+
+                // 4. Apagar o IndexedDB
+                const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+
+                deleteRequest.onsuccess = () => {
+                    showToast("Dados eliminados com sucesso!");
+                    setTimeout(() => location.reload(), 800);
+                };
+
+                deleteRequest.onerror = (e) => {
+                    console.error("Erro ao apagar base de dados:", e);
+                    showToast("Erro ao limpar dados do sistema.", "error");
                     setTimeout(() => location.reload(), 1000);
                 };
-                req.onerror = () => {
-                    showToast("Erro ao limpar banco", "error");
-                    location.reload();
+
+                deleteRequest.onblocked = () => {
+                    // Se estiver bloqueado, recarregamos a página para forçar o fecho de qualquer aba pendente
+                    showToast("Limpeza pendente. A reiniciar...");
+                    setTimeout(() => location.reload(), 500);
                 };
             }
         }
