@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Presença Office - Global</title>
+    <title>Controle de Presença Office - Local</title>
+    <!-- Bibliotecas Externas -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background-color: #0f172a; color: #f1f5f9; }
         .drop-zone { border: 2px dashed #334155; transition: all 0.3s ease; background-color: #1e293b; }
@@ -16,143 +16,53 @@
             transform: scale(1.02);
             box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
         }
-        
         @media (min-width: 768px) {
-            .app-grid {
-                display: grid;
-                grid-template-columns: 1fr 350px;
-                gap: 2rem;
-                align-items: start;
-            }
-            .sticky-sidebar {
-                position: sticky;
-                top: 2rem;
-                max-height: calc(100vh - 4rem);
-                overflow-y: auto;
-            }
+            .app-grid { display: grid; grid-template-columns: 1fr 350px; gap: 2rem; align-items: start; }
+            .sticky-sidebar { position: sticky; top: 2rem; max-height: calc(100vh - 4rem); overflow-y: auto; }
         }
-
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-        .progress-bar-container {
-            width: 100%;
-            height: 8px;
-            background-color: #334155;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 15px;
-        }
-        .progress-bar-fill {
-            height: 100%;
-            background-color: #3b82f6;
-            width: 0%;
-            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 22px;
-        }
+        .progress-bar-container { width: 100%; height: 8px; background-color: #334155; border-radius: 10px; overflow: hidden; margin-top: 15px; }
+        .progress-bar-fill { height: 100%; background-color: #3b82f6; width: 0%; transition: width 0.4s; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #334155;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 16px; width: 16px;
-            left: 3px; bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: #3b82f6; }
         input:checked + .slider:before { transform: translateX(22px); }
-
-        /* Estilos do Calendário */
-        .calendar-day {
-            aspect-ratio: 1 / 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            border-radius: 6px;
-            cursor: default;
-        }
-        .day-active {
-            background-color: #3b82f6;
-            color: white;
-            font-weight: bold;
-            box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
-        }
+        .calendar-day { aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; font-size: 10px; border-radius: 6px; }
+        .day-active { background-color: #3b82f6; color: white; font-weight: bold; box-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
+        .nav-btn { cursor: pointer; padding: 4px; border-radius: 4px; transition: background 0.2s; }
+        .nav-btn:hover { background-color: #334155; }
     </style>
 </head>
 <body class="min-h-screen font-sans">
-
     <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
-
-    <!-- LOGIN -->
-    <div id="loginSection" class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-700 text-center">
-            <h1 class="text-2xl font-bold text-slate-100 mb-2">Painel Coletivo</h1>
-            <p class="text-slate-400 text-sm mb-8">Controle de Presença Office</p>
-            <form id="authForm" class="space-y-4 text-left">
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">E-mail</label>
-                    <input type="email" id="email" required class="w-full px-4 py-2 bg-slate-900 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">Senha</label>
-                    <input type="password" id="password" required class="w-full px-4 py-2 bg-slate-900 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition">
-                </div>
-                <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition mt-4">Entrar</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- APP PRINCIPAL -->
-    <div id="mainApp" class="hidden max-w-7xl mx-auto py-10 px-4">
-        <!-- GLOBAL LOADER COM BARRA DE PROGRESSO -->
+    
+    <div id="mainApp" class="max-w-7xl mx-auto py-10 px-4">
+        <!-- Loader Global -->
         <div id="globalLoader" class="fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-6">
             <div class="bg-slate-800 border border-slate-700 rounded-2xl p-10 max-w-sm w-full shadow-2xl text-center">
                 <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-                <h2 id="globalLoaderTitle" class="text-slate-100 font-bold mb-2 uppercase tracking-widest text-sm">Carregando Dados</h2>
-                <div id="progressInfo" class="text-[11px] text-slate-400 font-mono mb-1">Iniciando...</div>
-                <div class="progress-bar-container">
-                    <div id="progressBarFill" class="progress-bar-fill"></div>
-                </div>
+                <h2 id="globalLoaderTitle" class="text-slate-100 font-bold mb-2 uppercase tracking-widest text-sm">Processando</h2>
+                <div id="progressInfo" class="text-[11px] text-slate-400 font-mono mb-1">Aguarde...</div>
+                <div class="progress-bar-container"><div id="progressBarFill" class="progress-bar-fill"></div></div>
             </div>
         </div>
 
+        <!-- Cabeçalho -->
         <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 border-b pb-6 border-slate-800">
             <div>
                 <h1 class="text-3xl font-bold text-slate-100">Presença Office</h1>
-                <div class="flex flex-col mt-1">
-                    <div class="flex items-center gap-2 text-sm text-slate-400">
-                        <span id="userEmailDisplay" class="font-medium text-slate-300"></span> | <button onclick="handleSignOut()" class="text-red-400 hover:underline">Sair</button>
-                    </div>
-                    <!-- Botão posicionado abaixo do e-mail -->
-                    <button onclick="exportToExcel()" class="mt-3 w-fit flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all shadow-lg shadow-emerald-900/20">
+                <div class="flex flex-col mt-3">
+                    <button onclick="exportToExcel()" class="w-fit flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all shadow-lg shadow-emerald-900/20">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Exportar Relatório Excel
                     </button>
                 </div>
             </div>
-            
             <div class="flex items-center gap-6 bg-slate-800/50 p-3 rounded-xl border border-slate-700">
                 <div class="flex items-center gap-3">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Filtrar por Controlador</span>
+                    <!-- Termo atualizado conforme solicitado -->
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Filtrar por pessoas atualmente cadastradas no sistema</span>
                     <label class="switch">
                         <input type="checkbox" id="toggleControlFilter" onchange="applySearch()">
                         <span class="slider"></span>
@@ -162,8 +72,8 @@
         </div>
 
         <div class="app-grid">
+            <!-- Conteúdo Principal -->
             <main class="space-y-8 order-2 md:order-1">
-                <!-- SEÇÃO DE ESTATÍSTICAS -->
                 <div id="statsSection" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
                         <p class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Pessoas Únicas</p>
@@ -176,21 +86,18 @@
                 </div>
 
                 <div id="searchContainer" class="hidden">
-                    <input type="text" id="searchInput" placeholder="Pesquisar por nome ou ID..." class="w-full px-5 py-3 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    <input type="text" id="searchInput" placeholder="Pesquisar por nome (ex: cassia) ou ID..." class="w-full px-5 py-3 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                 </div>
 
                 <div id="tableContainer" class="hidden bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                    <div class="p-4 border-b border-slate-700 flex justify-between items-center text-xs">
-                        <h2 class="font-bold text-slate-300 uppercase tracking-widest">Relatório: Último Acesso por Pessoa</h2>
-                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
-                            <thead class="bg-slate-900/50">
+                            <thead class="bg-slate-900/50 text-slate-500 text-[10px] uppercase tracking-wider">
                                 <tr>
-                                    <th class="px-6 py-4 text-slate-500 text-[10px] uppercase tracking-wider">ID Pessoal</th>
-                                    <th class="px-6 py-4 text-slate-500 text-[10px] uppercase tracking-wider">Nome Completo</th>
-                                    <th class="px-6 py-4 text-slate-500 text-[10px] uppercase tracking-wider">Data Último Registro</th>
-                                    <th class="px-6 py-4 text-slate-500 text-[10px] uppercase tracking-wider text-center">Ausência</th>
+                                    <th class="px-6 py-4">ID Pessoal</th>
+                                    <th class="px-6 py-4">Nome Completo</th>
+                                    <th class="px-6 py-4">Último Registro</th>
+                                    <th class="px-6 py-4 text-center">Ausência</th>
                                 </tr>
                             </thead>
                             <tbody id="dataTableBody" class="divide-y divide-slate-700 text-sm"></tbody>
@@ -199,68 +106,61 @@
                 </div>
 
                 <div id="emptyState" class="bg-slate-800 rounded-xl p-12 text-center border border-slate-700">
-                    <h3 class="text-slate-100 font-bold">Nenhum dado para exibir</h3>
-                    <p class="text-slate-400 text-sm mt-2">Carregue ficheiros de presença e o controlador.</p>
+                    <h3 class="text-slate-100 font-bold">Nenhum dado armazenado</h3>
+                    <p class="text-slate-400 text-sm mt-2">Arraste os arquivos de presença para a barra lateral.</p>
                 </div>
             </main>
 
+            <!-- Barra Lateral -->
             <aside class="sticky-sidebar space-y-8 order-1 md:order-2">
-                <!-- ARQUIVO CONTROLADOR -->
+                <!-- Seção: Pessoas Cadastradas (Sistema) -->
                 <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
-                    <h2 class="text-xs font-black text-blue-500 uppercase tracking-widest mb-4">Arquivo Controlador</h2>
-                    <div id="dropZoneControl" class="drop-zone rounded-xl p-4 text-center cursor-pointer border-dashed border-2 border-slate-700 hover:border-blue-500 transition-all bg-slate-900/30">
+                    <h2 class="text-[11px] font-black text-blue-500 uppercase tracking-widest mb-4 leading-tight">Importar pessoas atualmente cadastradas no sistema</h2>
+                    <div id="dropZoneControl" class="drop-zone rounded-xl p-4 text-center cursor-pointer border-dashed border-2 border-slate-700 hover:border-blue-500 bg-slate-900/30">
                         <input type="file" id="controlInput" accept=".xlsx, .xls, .csv" class="hidden">
-                        <div class="flex flex-col items-center">
-                            <svg class="text-slate-500 mb-2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                            <span id="controlFileName" class="text-[11px] font-bold text-slate-300">Selecionar Controlador</span>
-                        </div>
+                        <span id="controlFileName" class="text-[11px] font-bold text-slate-300">Selecionar Ficheiro</span>
                     </div>
-                    <div id="controlDetails" class="hidden mt-3 text-[10px] text-slate-500 flex justify-between px-1">
+                    <div id="controlDetails" class="hidden mt-3 text-[10px] text-slate-500 flex justify-between">
                         <span id="controlCountText">0 IDs</span>
                         <button onclick="clearControlFile()" class="text-red-400 hover:underline">Limpar</button>
                     </div>
                 </div>
 
-                <!-- CALENDÁRIO DE COBERTURA -->
+                <!-- Seção: Calendário -->
                 <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest">Cobertura de Datas</h2>
-                        <div class="flex gap-2">
-                            <button onclick="changeMonth(-1)" class="text-slate-500 hover:text-white transition">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        <div class="flex items-center gap-2">
+                            <button onclick="changeMonth(-1)" class="nav-btn text-slate-400 hover:text-white">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="15 18 9 12 15 6"/></svg>
                             </button>
-                            <span id="currentCalendarMonth" class="text-[10px] font-bold text-slate-200 min-w-[80px] text-center">Janeiro 2024</span>
-                            <button onclick="changeMonth(1)" class="text-slate-500 hover:text-white transition">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            <span id="currentCalendarMonth" class="text-[10px] font-bold text-slate-200 min-w-[80px] text-center">---</span>
+                            <button onclick="changeMonth(1)" class="nav-btn text-slate-400 hover:text-white">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"/></svg>
                             </button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-slate-600 mb-2">
-                        <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
-                    </div>
-                    <div id="calendarDays" class="grid grid-cols-7 gap-1">
-                        <!-- Dias gerados via JS -->
-                    </div>
-                    <div class="mt-4 flex items-center gap-2">
-                        <div class="w-3 h-3 bg-blue-600 rounded shadow-sm"></div>
-                        <span class="text-[10px] text-slate-400 font-medium">Dias com registros carregados</span>
+                    <div id="calendarDays" class="grid grid-cols-7 gap-1"></div>
+                    <div class="mt-2 text-center">
+                        <button onclick="resetToCurrentMonth()" class="text-[9px] text-blue-500 hover:underline uppercase font-bold">Mês Atual</button>
                     </div>
                 </div>
 
-                <!-- ARQUIVOS DE PRESENÇA -->
-                <div>
-                    <h2 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Arquivos de Presença</h2>
-                    <div id="dropZone" class="drop-zone rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 transition bg-slate-800 border-2 border-slate-700 border-dashed">
+                <!-- Seção: Importar Registros (Frequência) -->
+                <div class="bg-slate-800/40 p-5 rounded-2xl border border-slate-700">
+                    <h2 class="text-[11px] font-black text-blue-500 uppercase tracking-widest mb-4 leading-tight">Importar Registros</h2>
+                    <div id="dropZone" class="drop-zone rounded-xl p-6 text-center cursor-pointer border-2 border-slate-700 border-dashed hover:border-blue-500">
                         <input type="file" id="fileInput" multiple accept=".csv, .xlsx, .xls" class="hidden">
-                        <div class="flex flex-col items-center">
-                            <svg class="text-blue-500 mb-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/></svg>
-                            <p class="text-slate-200 font-bold text-sm">Carregar Presenças</p>
-                        </div>
+                        <p class="text-slate-200 font-bold text-sm">Carregar Arquivos</p>
+                        <p class="text-[10px] text-slate-500 mt-1">Excel ou CSV</p>
                     </div>
                 </div>
 
                 <div id="fileListSection" class="hidden">
-                    <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Arquivos em Nuvem</h3>
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Arquivos Carregados</h3>
+                        <button onclick="clearAllData()" class="text-[9px] text-red-500 hover:underline uppercase font-bold">Limpar Tudo</button>
+                    </div>
                     <div id="fileListContainer" class="flex flex-col gap-2"></div>
                 </div>
             </aside>
@@ -268,351 +168,298 @@
     </div>
 
     <script>
-        const supabaseUrl = 'https://rztrygjczjqeqqldiqxa.supabase.co';
-        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6dHJ5Z2pjempxZXFxbGRpcXhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwNDgyMzIsImV4cCI6MjA3MzYyNDIzMn0.s7QiJWo6SPZRmN1bW1vPyhEis0xO1voNh0GFWPrTLtU';
-        const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const STORAGE_RECORDS = 'office_attendance_records_v1';
+        const STORAGE_FILES = 'office_attendance_files_v1';
+        const STORAGE_CONTROL = 'office_attendance_control_v1';
 
-        const loginSection = document.getElementById('loginSection');
-        const mainApp = document.getElementById('mainApp');
-        const globalLoader = document.getElementById('globalLoader');
-        const progressBarFill = document.getElementById('progressBarFill');
-        const progressInfo = document.getElementById('progressInfo');
-        const searchInput = document.getElementById('searchInput');
-        const toggleControlFilter = document.getElementById('toggleControlFilter');
-        const controlFileName = document.getElementById('controlFileName');
-        const controlCountText = document.getElementById('controlCountText');
-        const controlDetails = document.getElementById('controlDetails');
-        const calendarDays = document.getElementById('calendarDays');
-        const currentCalendarMonth = document.getElementById('currentCalendarMonth');
+        let loadedFiles = [], allRawRecords = [], allowedIds = new Set(), coveredDates = new Set();
+        let groupedPeople = [];
+        let currentViewDate = new Date();
 
-        let currentUser = null;
-        let loadedFiles = [];
-        let allRawRecords = [];
-        let groupedPeople = []; 
-        let allowedIds = new Set();
-        let coveredDates = new Set(); 
-        let calendarViewDate = new Date();
-        let currentFilteredData = [];
-
-        async function checkSession() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) onAuthSuccess(session.user);
-        }
-
-        document.getElementById('authForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ 
-                email: e.target.email.value, 
-                password: e.target.password.value 
-            });
-            if (error) showToast(error.message, 'error');
-            else onAuthSuccess(data.user);
+        window.onload = () => { 
+            loadLocalData(); 
+            renderCalendar(); 
         };
 
-        function onAuthSuccess(user) {
-            currentUser = user;
-            loginSection.classList.add('hidden');
-            mainApp.classList.remove('hidden');
-            document.getElementById('userEmailDisplay').innerText = user.email;
-            loadDataFromSupabase();
+        function removeAccents(str) {
+            if (!str) return "";
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         }
 
-        async function handleSignOut() { await supabaseClient.auth.signOut(); location.reload(); }
-
-        async function fetchAllRecordsOptimized() {
-            const { count, error: countError } = await supabaseClient
-                .from('attendance_records')
-                .select('*', { count: 'exact', head: true });
-
-            if (countError) throw countError;
-            if (count === 0) return [];
-
-            const step = 1000;
-            const totalBatches = Math.ceil(count / step);
-            const promises = [];
-
-            updateProgressBar(0, count);
-
-            for (let i = 0; i < totalBatches; i++) {
-                const from = i * step;
-                const to = from + step - 1;
-                promises.push(
-                    supabaseClient
-                        .from('attendance_records')
-                        .select('personal_id, timestamp, first_name, last_name, file_id')
-                        .range(from, to)
-                        .then(res => {
-                            const loadedSoFar = Math.min((i + 1) * step, count);
-                            updateProgressBar(loadedSoFar, count);
-                            return res.data;
-                        })
-                );
-            }
-
-            const results = await Promise.all(promises);
-            return results.flat();
-        }
-
-        function updateProgressBar(current, total) {
-            const pct = Math.min(Math.round((current / total) * 100), 100);
-            progressBarFill.style.width = `${pct}%`;
-            progressInfo.innerText = `${current.toLocaleString()} de ${total.toLocaleString()} registros (${pct}%)`;
-        }
-
-        async function loadDataFromSupabase() {
-            showGlobalLoader(true, "Sincronizando Banco...");
+        function loadLocalData() {
             try {
-                const [filesRes, records] = await Promise.all([
-                    supabaseClient.from('files').select('*'),
-                    fetchAllRecordsOptimized()
-                ]);
-
-                loadedFiles = filesRes.data || [];
-                allRawRecords = records;
+                loadedFiles = JSON.parse(localStorage.getItem(STORAGE_FILES) || '[]');
+                allRawRecords = JSON.parse(localStorage.getItem(STORAGE_RECORDS) || '[]');
+                const ctrl = JSON.parse(localStorage.getItem(STORAGE_CONTROL) || 'null');
                 
-                coveredDates.clear();
-                allRawRecords.forEach(r => {
-                    const d = new Date(r.timestamp);
-                    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                    coveredDates.add(dateStr);
-                });
-
-                processAndDisplay();
-                renderCalendar();
-            } catch (err) { 
-                console.error(err);
-                showToast("Erro ao carregar dados", "error"); 
-            } finally { 
-                setTimeout(() => showGlobalLoader(false), 500);
-            }
-        }
-
-        function renderCalendar() {
-            calendarDays.innerHTML = '';
-            const year = calendarViewDate.getFullYear();
-            const month = calendarViewDate.getMonth();
-            const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-            currentCalendarMonth.innerText = `${monthNames[month]} ${year}`;
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            for (let i = 0; i < firstDay; i++) {
-                const empty = document.createElement('div');
-                empty.className = 'calendar-day';
-                calendarDays.appendChild(empty);
-            }
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dayEl = document.createElement('div');
-                dayEl.className = 'calendar-day text-slate-400';
-                dayEl.innerText = day;
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                if (coveredDates.has(dateStr)) {
-                    dayEl.classList.add('day-active');
-                    dayEl.classList.remove('text-slate-400');
+                if(ctrl) {
+                    allowedIds = new Set(ctrl.ids);
+                    document.getElementById('controlFileName').innerText = ctrl.name;
+                    document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
+                    document.getElementById('controlDetails').classList.remove('hidden');
                 }
-                calendarDays.appendChild(dayEl);
+                
+                updateCoveredDates();
+                processAndDisplay();
+            } catch(e) {
+                console.error("Erro ao ler LocalStorage", e);
             }
         }
 
-        function changeMonth(step) {
-            calendarViewDate.setMonth(calendarViewDate.getMonth() + step);
-            renderCalendar();
+        function updateCoveredDates() {
+            coveredDates.clear();
+            allRawRecords.forEach(r => {
+                const d = new Date(r.timestamp);
+                if(!isNaN(d)) {
+                    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                    coveredDates.add(key);
+                }
+            });
         }
 
         function processAndDisplay() {
             const container = document.getElementById('fileListContainer');
             container.innerHTML = '';
-            if (loadedFiles.length > 0) {
+            
+            if(loadedFiles.length) {
                 document.getElementById('fileListSection').classList.remove('hidden');
                 loadedFiles.forEach(f => {
-                    const item = document.createElement('div');
-                    item.className = "flex items-center justify-between bg-slate-800 p-2 rounded-lg border border-slate-700 text-[10px]";
-                    item.innerHTML = `<span class="truncate">${f.name}</span><button onclick="removeFile(${f.id})" class="text-red-400 hover:text-red-300">Excluir</button>`;
-                    container.appendChild(item);
+                    const div = document.createElement('div');
+                    div.className = "flex items-center justify-between bg-slate-800 p-2 rounded-lg border border-slate-700 text-[10px]";
+                    div.innerHTML = `<span class="truncate pr-2">${f.name}</span><button onclick="removeFile('${f.id}')" class="text-red-400 hover:text-red-300 font-bold">X</button>`;
+                    container.appendChild(div);
                 });
+            } else {
+                document.getElementById('fileListSection').classList.add('hidden');
             }
-            if (allRawRecords.length === 0) {
+
+            if(!allRawRecords.length) {
                 ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.add('hidden'));
                 document.getElementById('emptyState').classList.remove('hidden');
                 return;
             }
+
             document.getElementById('emptyState').classList.add('hidden');
+            
             const personMap = new Map();
             const now = new Date();
+
             allRawRecords.forEach(r => {
                 const id = String(r.personal_id).trim();
-                const recordDate = new Date(r.timestamp);
-                if (!personMap.has(id) || recordDate > personMap.get(id).dt) {
-                    const diffTime = Math.abs(now - recordDate);
-                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                    personMap.set(id, {
-                        id: id,
-                        dt: recordDate,
-                        nomeCompleto: `${r.first_name} ${r.last_name}`.trim(),
-                        diffDays: diffDays
+                const d = new Date(r.timestamp);
+                if(!personMap.has(id) || d > personMap.get(id).dt) {
+                    personMap.set(id, { 
+                        id, 
+                        dt: d, 
+                        nome: `${r.first_name} ${r.last_name}`.trim(),
+                        diff: Math.floor(Math.abs(now - d) / (1000*60*60*24))
                     });
                 }
             });
-            groupedPeople = Array.from(personMap.values());
-            groupedPeople.sort((a, b) => a.dt - b.dt);
+
+            groupedPeople = Array.from(personMap.values()).sort((a,b) => b.dt - a.dt);
             applySearch();
         }
 
         function applySearch() {
-            const term = searchInput.value.toLowerCase();
-            const filterActive = toggleControlFilter.checked;
-            currentFilteredData = groupedPeople.filter(item => {
-                const matchSearch = item.nomeCompleto.toLowerCase().includes(term) || item.id.toLowerCase().includes(term);
-                const matchControl = filterActive ? allowedIds.has(item.id) : true;
-                return matchSearch && matchControl;
+            const termRaw = document.getElementById('searchInput').value.toLowerCase();
+            const term = removeAccents(termRaw);
+            const filterOn = document.getElementById('toggleControlFilter').checked;
+            
+            const filtered = groupedPeople.filter(p => {
+                const normalizedName = removeAccents(p.nome.toLowerCase());
+                const matchTerm = normalizedName.includes(term) || p.id.includes(term);
+                const matchControl = filterOn ? allowedIds.has(p.id) : true;
+                return matchTerm && matchControl;
             });
-            document.getElementById('statUnique').innerText = currentFilteredData.length.toLocaleString();
+            
+            document.getElementById('statUnique').innerText = filtered.length.toLocaleString();
             document.getElementById('statTotal').innerText = allRawRecords.length.toLocaleString();
-            renderTable(currentFilteredData);
-            ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.remove('hidden'));
-        }
-
-        function renderTable(data) {
+            
             const tbody = document.getElementById('dataTableBody');
             tbody.innerHTML = '';
-            data.forEach(item => {
+            
+            filtered.forEach(p => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-700/30 border-slate-700";
-                const dataFormatada = item.dt.toLocaleString('pt-BR', {
-                    day: '2-digit', month: '2-digit', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
-                });
                 tr.innerHTML = `
-                    <td class="px-6 py-4 font-mono text-[11px] text-slate-500">${item.id}</td>
-                    <td class="px-6 py-4 font-bold text-slate-100">${item.nomeCompleto}</td>
-                    <td class="px-6 py-4 text-xs text-slate-400">${dataFormatada}</td>
+                    <td class="px-6 py-4 font-mono text-[11px] text-slate-500">${p.id}</td>
+                    <td class="px-6 py-4 font-bold text-slate-100">${p.nome}</td>
+                    <td class="px-6 py-4 text-xs text-slate-400">${p.dt.toLocaleString('pt-PT')}</td>
                     <td class="px-6 py-4 text-center">
-                        <span class="text-slate-400 text-xs">
-                            ${item.diffDays === 0 ? 'Hoje' : item.diffDays + ' dias'}
+                        <span class="${p.diff > 7 ? 'text-red-400' : 'text-slate-400'} text-xs">
+                            ${p.diff === 0 ? 'Hoje' : p.diff + ' dias'}
                         </span>
                     </td>`;
                 tbody.appendChild(tr);
             });
+            
+            ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+        }
+
+        function changeMonth(step) {
+            currentViewDate.setMonth(currentViewDate.getMonth() + step);
+            renderCalendar();
+        }
+
+        function resetToCurrentMonth() {
+            currentViewDate = new Date();
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const y = currentViewDate.getFullYear();
+            const m = currentViewDate.getMonth();
+            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            
+            document.getElementById('currentCalendarMonth').innerText = `${meses[m]} ${y}`;
+            
+            const grid = document.getElementById('calendarDays'); 
+            grid.innerHTML = '';
+            
+            const totalDays = new Date(y, m + 1, 0).getDate();
+            
+            for(let i = 1; i <= totalDays; i++){
+                const day = document.createElement('div');
+                day.className = 'calendar-day text-slate-600 border border-slate-800/50';
+                day.innerText = i;
+                
+                const dateKey = `${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                if(coveredDates.has(dateKey)) {
+                    day.classList.add('day-active');
+                    day.classList.remove('text-slate-600');
+                }
+                grid.appendChild(day);
+            }
+        }
+
+        async function parseAttendance(file) {
+            return new Promise(res => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        const wb = XLSX.read(e.target.result, { type: file.name.endsWith('.csv') ? 'string' : 'binary' });
+                        const sheet = wb.Sheets[wb.SheetNames[0]];
+                        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                        
+                        const idx = json.findIndex(row => row && row.some(c => String(c).includes('ID Pessoal')));
+                        if(idx === -1) {
+                            showToast("Formato de arquivo inválido", "error");
+                            return res([]);
+                        }
+                        
+                        const rows = json.slice(idx + 1).map(row => ({
+                            personal_id: String(row[6] || "").trim(),
+                            timestamp: row[1],
+                            first_name: row[7] || '',
+                            last_name: row[8] || ''
+                        })).filter(x => x.personal_id && x.timestamp);
+                        
+                        res(rows);
+                    } catch(err) {
+                        showToast("Erro ao processar ficheiro", "error");
+                        res([]);
+                    }
+                };
+                if(file.name.endsWith('.csv')) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function saveRecords(name, data) {
+            const fileId = 'f' + Date.now() + Math.random().toString(16).slice(2, 8);
+            loadedFiles.push({ id: fileId, name });
+            const newRecords = data.map(d => ({ ...d, file_id: fileId }));
+            allRawRecords.push(...newRecords);
+            localStorage.setItem(STORAGE_FILES, JSON.stringify(loadedFiles));
+            localStorage.setItem(STORAGE_RECORDS, JSON.stringify(allRawRecords));
+            updateCoveredDates();
+            processAndDisplay();
+            renderCalendar();
+            showToast(`Carregado: ${name}`);
+        }
+
+        function removeFile(id) {
+            allRawRecords = allRawRecords.filter(r => r.file_id !== id);
+            loadedFiles = loadedFiles.filter(f => f.id !== id);
+            localStorage.setItem(STORAGE_FILES, JSON.stringify(loadedFiles));
+            localStorage.setItem(STORAGE_RECORDS, JSON.stringify(allRawRecords));
+            updateCoveredDates();
+            processAndDisplay();
+            renderCalendar();
+            showToast("Arquivo removido");
+        }
+
+        function clearAllData() {
+            if(confirm("Deseja apagar TODOS os dados carregados?")) {
+                localStorage.clear();
+                location.reload();
+            }
         }
 
         function exportToExcel() {
-            if (currentFilteredData.length === 0) {
-                showToast("Não há dados para exportar", "error");
-                return;
-            }
-            
-            const exportData = currentFilteredData.map(item => ({
-                "ID Pessoal": item.id,
-                "Nome Completo": item.nomeCompleto,
-                "Data Último Registro": item.dt.toLocaleString('pt-BR'),
-                "Ausência": item.diffDays === 0 ? 'Hoje' : `${item.diffDays} dias`
+            if(!groupedPeople.length) return showToast("Sem dados para exportar", "error");
+            const data = groupedPeople.map(p => ({
+                "ID Pessoal": p.id,
+                "Nome": p.nome,
+                "Último Acesso": p.dt.toLocaleString('pt-PT'),
+                "Dias de Ausência": p.diff
             }));
-
-            const ws = XLSX.utils.json_to_sheet(exportData);
+            const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Relatório de Presença");
-            XLSX.writeFile(wb, `Relatorio_Presenca_${new Date().toISOString().split('T')[0]}.xlsx`);
-            showToast("Arquivo Excel gerado!");
-        }
-
-        async function removeFile(id) {
-            if (!confirm("Remover este arquivo e todos os seus registros?")) return;
-            showGlobalLoader(true, "Removendo...");
-            await supabaseClient.from('attendance_records').delete().eq('file_id', id);
-            await supabaseClient.from('files').delete().eq('id', id);
-            loadDataFromSupabase();
-        }
-
-        async function handleControlFile(file) {
-            if (!file) return;
-            showGlobalLoader(true, "Lendo Controlador...");
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const data = e.target.result;
-                const wb = XLSX.read(data, { type: file.name.endsWith('.csv') ? 'string' : 'binary' });
-                const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-                const ids = json.slice(2).map(row => String(row[0] || "").trim()).filter(id => id);
-                allowedIds = new Set(ids);
-                controlFileName.innerText = file.name;
-                controlCountText.innerText = `${allowedIds.size} IDs`;
-                controlDetails.classList.remove('hidden');
-                applySearch();
-                showGlobalLoader(false);
-                showToast("Controlador Carregado");
-            };
-            if (file.name.endsWith('.csv')) reader.readAsText(file);
-            else reader.readAsArrayBuffer(file);
-        }
-
-        function clearControlFile() {
-            allowedIds = new Set();
-            controlDetails.classList.add('hidden');
-            controlFileName.innerText = "Selecionar Controlador";
-            applySearch();
-        }
-
-        async function saveFileRecords(fileName, rawData) {
-            showGlobalLoader(true, "Guardando...");
-            const { data: fileRec } = await supabaseClient.from('files').insert([{ name: fileName, user_id: currentUser.id }]).select().single();
-            const records = rawData.map(r => ({
-                user_id: currentUser.id, file_id: fileRec.id, personal_id: r.id,
-                first_name: r.nome, last_name: r.sobrenome, timestamp: r.horario
-            }));
-            const batchSize = 1000;
-            const total = records.length;
-            for (let i = 0; i < total; i += batchSize) {
-                const batch = records.slice(i, i + batchSize);
-                updateProgressBar(i, total);
-                await supabaseClient.from('attendance_records').insert(batch);
-            }
-            loadDataFromSupabase();
-        }
-
-        function showGlobalLoader(show, title) { 
-            globalLoader.style.display = show ? 'flex' : 'none'; 
-            if (title) document.getElementById('globalLoaderTitle').innerText = title;
-            progressBarFill.style.width = '0%';
+            XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+            XLSX.writeFile(wb, `Relatorio_Presenca_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function showToast(msg, type = 'success') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
-            toast.className = `${type === 'error' ? 'bg-red-600' : 'bg-blue-600'} text-white px-5 py-3 rounded-xl shadow-lg text-sm transition-all duration-300`;
+            toast.className = `${type === 'error' ? 'bg-red-600' : 'bg-blue-600'} text-white px-4 py-2 rounded-lg shadow-xl text-xs font-bold transition-all duration-300 transform translate-y-0`;
             toast.innerText = msg;
             container.appendChild(toast);
             setTimeout(() => {
-                toast.style.opacity = '0';
+                toast.classList.add('opacity-0', 'translate-y-2');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
 
-        async function parseAttendance(file) {
-            return new Promise(resolve => {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const wb = XLSX.read(e.target.result, { type: file.name.endsWith('.csv') ? 'string' : 'binary' });
-                    const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-                    const idx = json.findIndex(r => r && r.some(c => String(c).includes('ID Pessoal')));
-                    if (idx === -1) return resolve([]);
-                    resolve(json.slice(idx + 1).map(row => ({
-                        id: String(row[6] || "").trim(), horario: row[1], nome: row[7] || 'N/A', sobrenome: row[8] || ''
-                    })).filter(r => r.id));
-                };
-                if (file.name.endsWith('.csv')) reader.readAsText(file);
-                else reader.readAsArrayBuffer(file);
-            });
-        }
-
-        document.getElementById('controlInput').onchange = e => handleControlFile(e.target.files[0]);
-        document.getElementById('dropZoneControl').onclick = () => document.getElementById('controlInput').click();
         document.getElementById('fileInput').onchange = async e => {
-            for (let f of e.target.files) {
+            document.getElementById('globalLoader').classList.replace('hidden', 'flex');
+            for(let f of e.target.files) {
                 const data = await parseAttendance(f);
-                if (data.length) await saveFileRecords(f.name, data);
+                if(data.length) await saveRecords(f.name, data);
             }
+            document.getElementById('globalLoader').classList.replace('flex', 'hidden');
         };
+
+        document.getElementById('controlInput').onchange = e => {
+            const f = e.target.files[0];
+            const r = new FileReader();
+            r.onload = ev => {
+                const wb = XLSX.read(ev.target.result, {type: f.name.endsWith('.csv') ? 'string' : 'binary'});
+                const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
+                const ids = json.slice(1).map(row => String(row[0]||"").trim()).filter(x => x && x !== "ID Pessoal");
+                allowedIds = new Set(ids);
+                localStorage.setItem(STORAGE_CONTROL, JSON.stringify({ name: f.name, ids: Array.from(allowedIds) }));
+                document.getElementById('controlFileName').innerText = f.name;
+                document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
+                document.getElementById('controlDetails').classList.remove('hidden');
+                applySearch();
+                showToast("Controlador atualizado");
+            };
+            if(f.name.endsWith('.csv')) r.readAsText(f); else r.readAsArrayBuffer(f);
+        };
+
         document.getElementById('dropZone').onclick = () => document.getElementById('fileInput').click();
-        searchInput.oninput = applySearch;
-        checkSession();
+        document.getElementById('dropZoneControl').onclick = () => document.getElementById('controlInput').click();
+        document.getElementById('searchInput').oninput = applySearch;
+
+        function clearControlFile() {
+            localStorage.removeItem(STORAGE_CONTROL);
+            allowedIds = new Set();
+            document.getElementById('controlDetails').classList.add('hidden');
+            document.getElementById('controlFileName').innerText = "Selecionar Ficheiro";
+            applySearch();
+        }
     </script>
 </body>
 </html>
