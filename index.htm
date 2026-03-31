@@ -238,9 +238,9 @@
                 if (allNewData.length > 0) {
                     progressInfo.innerText = `Gravando ${allNewData.length} registros...`;
                     await bulkInsertRecords(allNewData);
-                    loadedFiles.push(...newFilesMetadata);
+                    loadedFiles = loadedFiles.concat(newFilesMetadata);
                     localStorage.setItem(STORAGE_FILES, JSON.stringify(loadedFiles));
-                    allRawRecords.push(...allNewData);
+                    allRawRecords = allRawRecords.concat(allNewData);
                     updateStateAndUI();
                     showToast(`${allNewData.length} registros importados.`);
                 }
