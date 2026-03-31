@@ -167,14 +167,27 @@
 
         async function initDB() {
             return new Promise((resolve) => {
-                const request = indexedDB.open(DB_NAME, 1);
-                request.onupgradeneeded = (e) => {
-                    const database = e.target.result;
-                    if (!database.objectStoreNames.contains('records')) {
-                        database.createObjectStore('records', { keyPath: 'id', autoIncrement: true });
-                    }
-                };
-                request.onsuccess = (e) => { db = e.target.result; resolve(); };
+                try {
+                    const request = indexedDB.open(DB_NAME, 1);
+                    request.onupgradeneeded = (e) => {
+                        const database = e.target.result;
+                        if (!database.objectStoreNames.contains('records')) {
+                            database.createObjectStore('records', { keyPath: 'id', autoIncrement: true });
+                        }
+                    };
+                    request.onsuccess = (e) => { db = e.target.result; resolve(); };
+                    request.onerror = (e) => {
+                        console.error("IndexedDB error:", e.target.error);
+                        resolve();
+                    };
+                    request.onblocked = () => {
+                        console.warn("IndexedDB blocked");
+                        resolve();
+                    };
+                } catch (err) {
+                    console.error("IndexedDB failed to open:", err);
+                    resolve();
+                }
             });
         }
 
@@ -261,8 +274,11 @@
                         const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
                         const sheet = wb.Sheets[wb.SheetNames[0]];
                         const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                        const headerIdx = json.findIndex(r => r && r.some(c => String(c).includes('ID Pessoal')));
-                        if(headerIdx === -1) return res([]);
+                        const headerIdx = json.findIndex(r => r && r.some(c => String(c).toLowerCase().includes('id pessoal')));
+                        if(headerIdx === -1) {
+                            showToast(`Cabeçalho não encontrado no ficheiro: ${file.name}`, "error");
+                            return res([]);
+                        }
                         const results = [];
                         for(let i = headerIdx + 1; i < json.length; i++) {
                             const row = json[i];
@@ -275,8 +291,19 @@
                                 });
                             }
                         }
+                        if (results.length === 0) {
+                            showToast(`Nenhum registo válido encontrado em: ${file.name}`, "error");
+                        }
                         res(results);
-                    } catch { res([]); }
+                    } catch (err) {
+                        console.error("Erro ao processar excel:", err);
+                        showToast("Erro ao processar ficheiro Excel", "error");
+                        res([]);
+                    }
+                };
+                reader.onerror = () => {
+                    showToast("Erro ao ler o ficheiro", "error");
+                    res([]);
                 };
                 reader.readAsBinaryString(file);
             });
@@ -442,13 +469,15 @@
 
         function setupDragAndDrop() {
             const zone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => zone.addEventListener(e, (ev) => {
                 ev.preventDefault();
                 zone.classList.toggle('drag-over', e === 'dragenter' || e === 'dragover');
                 if(e === 'drop') handleFiles(ev.dataTransfer.files);
             }));
-            zone.onclick = () => document.getElementById('fileInput').click();
-            document.getElementById('fileInput').onchange = (e) => handleFiles(e.target.files);
+            zone.onclick = () => fileInput.click();
+            fileInput.onclick = (e) => e.stopPropagation();
+            fileInput.onchange = (e) => handleFiles(e.target.files);
         }
 
         function showToast(msg, type = 'success') {
@@ -524,21 +553,40 @@
         document.getElementById('searchInput').oninput = applySearch;
         document.getElementById('controlInput').onchange = e => {
             const f = e.target.files[0];
+            if (!f) return;
             const r = new FileReader();
             r.onload = ev => {
-                const wb = XLSX.read(ev.target.result, {type: 'binary'});
-                const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
-                const ids = json.slice(1).map(row => String(row[0]||"").trim()).filter(x => x && x !== "ID Pessoal");
-                allowedIds = new Set(ids);
-                localStorage.setItem(STORAGE_CONTROL, JSON.stringify({ name: f.name, ids: Array.from(allowedIds) }));
-                document.getElementById('controlFileName').innerText = f.name;
-                document.getElementById('controlDetails').classList.remove('hidden');
-                document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
-                updateStateAndUI();
+                try {
+                    const wb = XLSX.read(ev.target.result, {type: 'binary'});
+                    const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
+                    const ids = json.slice(1).map(row => String(row[0]||"").trim()).filter(x => x && x.toLowerCase() !== "id pessoal");
+
+                    if (ids.length === 0) {
+                        showToast("Nenhum ID encontrado no ficheiro de controle", "error");
+                    } else {
+                        allowedIds = new Set(ids);
+                        localStorage.setItem(STORAGE_CONTROL, JSON.stringify({ name: f.name, ids: Array.from(allowedIds) }));
+                        document.getElementById('controlFileName').innerText = f.name;
+                        document.getElementById('controlDetails').classList.remove('hidden');
+                        document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
+                        updateStateAndUI();
+                        showToast(`${ids.length} IDs carregados com sucesso`);
+                    }
+                } catch (err) {
+                    console.error("Erro ao processar ficheiro de controle:", err);
+                    showToast("Erro ao processar ficheiro de controle", "error");
+                } finally {
+                    e.target.value = "";
+                }
+            };
+            r.onerror = () => {
+                showToast("Erro ao ler o ficheiro", "error");
+                e.target.value = "";
             };
             r.readAsBinaryString(f);
         };
         document.getElementById('dropZoneControl').onclick = () => document.getElementById('controlInput').click();
+        document.getElementById('controlInput').onclick = (e) => e.stopPropagation();
     </script>
 </body>
 </html>
