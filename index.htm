@@ -378,18 +378,22 @@
             renderCalendar();
         }
 
-        function applySearch() {
+        function getFilteredData() {
             const term = normalizeText(document.getElementById('searchInput').value);
             const keywords = term.split(/\s+/).filter(k => k.length > 0);
             const filterOn = document.getElementById('toggleControlFilter').checked;
 
-            const filtered = (window.groupedPeopleCache || []).filter(p => {
+            return (window.groupedPeopleCache || []).filter(p => {
                 const normalizedName = normalizeText(p.nome);
                 const normalizedId = normalizeText(p.id);
                 const matchKeywords = keywords.every(kw => normalizedName.includes(kw) || normalizedId.includes(kw));
                 const matchControl = filterOn ? allowedIds.has(p.id) : true;
                 return matchKeywords && matchControl;
             });
+        }
+
+        function applySearch() {
+            const filtered = getFilteredData();
 
             document.getElementById('statUnique').innerText = filtered.length;
             document.getElementById('statTotal').innerText = allRawRecords.length;
@@ -544,7 +548,8 @@
         }
 
         function exportToExcel() {
-            const ws = XLSX.utils.json_to_sheet(window.groupedPeopleCache.map(p => ({ "ID": p.id, "Nome": p.nome, "Última Presença": p.dt, "Dias de Ausência": p.diff })));
+            const data = getFilteredData();
+            const ws = XLSX.utils.json_to_sheet(data.map(p => ({ "ID": p.id, "Nome": p.nome, "Última Presença": p.dt, "Dias de Ausência": p.diff })));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Relatório");
             XLSX.writeFile(wb, "Relatorio_Presenca.xlsx");
