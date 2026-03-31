@@ -353,13 +353,15 @@
 
         function applySearch() {
             const term = normalizeText(document.getElementById('searchInput').value);
+            const keywords = term.split(/\s+/).filter(k => k.length > 0);
             const filterOn = document.getElementById('toggleControlFilter').checked;
 
             const filtered = (window.groupedPeopleCache || []).filter(p => {
                 const normalizedName = normalizeText(p.nome);
-                const matchTerm = normalizedName.includes(term) || p.id.includes(term);
+                const normalizedId = normalizeText(p.id);
+                const matchKeywords = keywords.every(kw => normalizedName.includes(kw) || normalizedId.includes(kw));
                 const matchControl = filterOn ? allowedIds.has(p.id) : true;
-                return matchTerm && matchControl;
+                return matchKeywords && matchControl;
             });
 
             document.getElementById('statUnique').innerText = filtered.length;
