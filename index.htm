@@ -30,7 +30,7 @@
 <body class="min-h-screen font-sans">
     <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
 
-    <div id="mainApp" class="max-w-7xl mx-auto py-10 px-4">
+    <div id="mainApp" class="max-w-full mx-auto py-10 px-4">
         <!-- Loader Global -->
         <div id="globalLoader" class="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-6">
             <div class="bg-slate-800 border border-slate-700 rounded-2xl p-10 max-w-sm w-full shadow-2xl text-center">
@@ -85,7 +85,7 @@
                 <div id="tableContainer" class="hidden bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
-                            <thead class="bg-slate-900/50 text-slate-500 text-[10px] uppercase tracking-wider">
+                            <thead class="bg-slate-900/50 text-slate-500 text-sm uppercase tracking-wider">
                                 <tr>
                                     <th class="px-6 py-4">ID Pessoal</th>
                                     <th class="px-6 py-4">Nome Completo</th>
@@ -450,13 +450,13 @@
             const tbody = document.getElementById('dataTableBody');
             tbody.innerHTML = toRender.map(p => `
                 <tr class="hover:bg-slate-700/30 border-slate-700 border-b last:border-0">
-                    <td class="px-6 py-4 font-mono text-[11px] text-slate-500">${p.id}</td>
+                    <td class="px-6 py-4 font-mono text-slate-500">${p.id}</td>
                     <td class="px-6 py-4 font-bold text-slate-100">${p.nome}</td>
-                    <td class="px-6 py-4 text-[11px] text-slate-400 italic">${p.dept || '---'}</td>
-                    <td class="px-6 py-4 font-mono text-[11px] text-slate-400">${p.phone || '---'}</td>
-                    <td class="px-6 py-4 text-xs text-slate-400">${p.dt ? p.dt.toLocaleString('pt-PT') : '---'}</td>
+                    <td class="px-6 py-4 text-slate-400 italic">${p.dept || '---'}</td>
+                    <td class="px-6 py-4 font-mono text-slate-400">${p.phone || '---'}</td>
+                    <td class="px-6 py-4 text-slate-400">${p.dt ? p.dt.toLocaleString('pt-PT') : '---'}</td>
                     <td class="px-6 py-4 text-center">
-                        <span class="${(p.diff === null || p.diff > 7) ? 'text-red-400' : 'text-slate-400'} text-xs">
+                        <span class="${(p.diff === null || p.diff > 7) ? 'text-red-400' : 'text-slate-400'}">
                             ${p.diff === null ? 'Sem registro' : (p.diff === 0 ? 'Hoje' : (p.diff === 1 ? '1 dia' : p.diff + ' dias'))}
                         </span>
                     </td>
