@@ -457,7 +457,7 @@
                     <td class="px-6 py-4 text-slate-400">${p.dt ? p.dt.toLocaleString('pt-PT') : '---'}</td>
                     <td class="px-6 py-4 text-center">
                         <span class="${(p.diff === null || p.diff > 7) ? 'text-red-400' : 'text-slate-400'}">
-                            ${p.diff === null ? 'Sem registro' : (p.diff === 0 ? 'Hoje' : (p.diff === 1 ? '1 dia' : p.diff + ' dias'))}
+                            ${p.diff === null ? 'Sem registro' : (p.diff === 0 ? '0' : (p.diff === 1 ? '1 dia' : p.diff + ' dias'))}
                         </span>
                     </td>
                 </tr>`).join('');
