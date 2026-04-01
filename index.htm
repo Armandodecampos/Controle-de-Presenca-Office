@@ -357,6 +357,7 @@
             coveredDates.clear();
             const personMap = new Map();
             const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
             // Passagem Única sobre allRawRecords
             for (let i = 0; i < allRawRecords.length; i++) {
@@ -379,7 +380,9 @@
 
             // Pós-processamento de personMap (Diff de datas feito apenas uma vez por pessoa)
             personMap.forEach(p => {
-                p.diff = Math.floor(Math.abs(now - p.dt) / (1000*60*60*24));
+                const recordStart = new Date(p.dt.getFullYear(), p.dt.getMonth(), p.dt.getDate());
+                p.diff = Math.floor((todayStart - recordStart) / (1000*60*60*24));
+
                 const meta = allowedIds.get(p.id);
                 if (meta) {
                     if (meta.nome) p.nome = meta.nome;
