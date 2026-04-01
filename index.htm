@@ -382,6 +382,7 @@
                 p.diff = Math.floor(Math.abs(now - p.dt) / (1000*60*60*24));
                 const meta = allowedIds.get(p.id);
                 if (meta) {
+                    if (meta.nome) p.nome = meta.nome;
                     p.dept = meta.dept || '';
                     p.phone = meta.phone || '';
                 }
@@ -394,7 +395,7 @@
                     personMap.set(idStr, {
                         id: idStr,
                         dt: null,
-                        nome: "ID: " + idStr,
+                        nome: meta.nome || ("ID: " + idStr),
                         diff: null,
                         dept: meta.dept || '',
                         phone: meta.phone || ''
@@ -643,12 +644,15 @@
                     const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
 
                     const tempMap = new Map();
-                    // Assumindo: A=ID (0), E=Dept (4), H=Telefone (7)
+                    // Assumindo: A=ID (0), B=Nome (1), C=Sobrenome (2), E=Dept (4), H=Telefone (7)
                     for (let i = 1; i < json.length; i++) {
                         const row = json[i];
                         const id = String(row[0] || "").trim();
                         if (id && id.toLowerCase() !== "id pessoal") {
+                            const firstName = String(row[1] || "").trim();
+                            const lastName = String(row[2] || "").trim();
                             tempMap.set(id, {
+                                nome: `${firstName} ${lastName}`.trim(),
                                 dept: String(row[4] || "").trim(),
                                 phone: String(row[7] || "").trim()
                             });
