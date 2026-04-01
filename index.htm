@@ -89,6 +89,8 @@
                                 <tr>
                                     <th class="px-6 py-4">ID Pessoal</th>
                                     <th class="px-6 py-4">Nome Completo</th>
+                                    <th class="px-6 py-4">Departamento</th>
+                                    <th class="px-6 py-4">Telefone</th>
                                     <th class="px-6 py-4">Último Registro</th>
                                     <th class="px-6 py-4 text-center">Ausência</th>
                                 </tr>
@@ -161,7 +163,7 @@
         const DB_NAME = 'PresenceOfficeDB';
         const STORAGE_FILES = 'office_attendance_files_v2';
         const STORAGE_CONTROL = 'office_attendance_control_v2';
-        let db, loadedFiles = [], allRawRecords = [], allowedIds = new Set(), coveredDates = new Set();
+        let db, loadedFiles = [], allRawRecords = [], allowedIds = new Map(), coveredDates = new Set();
         window.groupedPeopleCache = [];
 
         let currentCalendarDate = new Date();
@@ -203,7 +205,14 @@
                 loadedFiles = JSON.parse(localStorage.getItem(STORAGE_FILES) || '[]');
                 const ctrl = JSON.parse(localStorage.getItem(STORAGE_CONTROL) || 'null');
                 if(ctrl) {
-                    allowedIds = new Set(ctrl.ids);
+                    // Adaptar se for o formato antigo (Set de IDs) ou novo (Map serializado)
+                    if (Array.isArray(ctrl.ids)) {
+                        allowedIds = new Map(ctrl.ids.map(id => [String(id).trim(), {}]));
+                    } else if (typeof ctrl.ids === 'object' && ctrl.ids !== null) {
+                        allowedIds = new Map(Object.entries(ctrl.ids));
+                    } else {
+                        allowedIds = new Map();
+                    }
                     document.getElementById('controlFileName').innerText = ctrl.name;
                     document.getElementById('controlDetails').classList.remove('hidden');
                     document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
@@ -211,7 +220,7 @@
             } catch (err) {
                 console.error("Erro ao carregar localStorage:", err);
                 loadedFiles = [];
-                allowedIds = new Set();
+                allowedIds = new Map();
             }
 
             if (db) {
@@ -371,17 +380,24 @@
             // Pós-processamento de personMap (Diff de datas feito apenas uma vez por pessoa)
             personMap.forEach(p => {
                 p.diff = Math.floor(Math.abs(now - p.dt) / (1000*60*60*24));
+                const meta = allowedIds.get(p.id);
+                if (meta) {
+                    p.dept = meta.dept || '';
+                    p.phone = meta.phone || '';
+                }
             });
 
             // Adicionar pessoas cadastradas que não possuem registros
-            allowedIds.forEach(id => {
+            allowedIds.forEach((meta, id) => {
                 const idStr = String(id).trim();
                 if (!personMap.has(idStr)) {
                     personMap.set(idStr, {
                         id: idStr,
                         dt: null,
                         nome: "ID: " + idStr,
-                        diff: null
+                        diff: null,
+                        dept: meta.dept || '',
+                        phone: meta.phone || ''
                     });
                 }
             });
@@ -414,7 +430,8 @@
             return (window.groupedPeopleCache || []).filter(p => {
                 const normalizedName = normalizeText(p.nome);
                 const normalizedId = normalizeText(p.id);
-                const matchKeywords = keywords.every(kw => normalizedName.includes(kw) || normalizedId.includes(kw));
+                const normalizedDept = normalizeText(p.dept || '');
+                const matchKeywords = keywords.every(kw => normalizedName.includes(kw) || normalizedId.includes(kw) || normalizedDept.includes(kw));
                 const matchControl = filterOn ? allowedIds.has(p.id) : true;
                 return matchKeywords && matchControl;
             });
@@ -434,6 +451,8 @@
                 <tr class="hover:bg-slate-700/30 border-slate-700 border-b last:border-0">
                     <td class="px-6 py-4 font-mono text-[11px] text-slate-500">${p.id}</td>
                     <td class="px-6 py-4 font-bold text-slate-100">${p.nome}</td>
+                    <td class="px-6 py-4 text-[11px] text-slate-400 italic">${p.dept || '---'}</td>
+                    <td class="px-6 py-4 font-mono text-[11px] text-slate-400">${p.phone || '---'}</td>
                     <td class="px-6 py-4 text-xs text-slate-400">${p.dt ? p.dt.toLocaleString('pt-PT') : '---'}</td>
                     <td class="px-6 py-4 text-center">
                         <span class="${(p.diff === null || p.diff > 7) ? 'text-red-400' : 'text-slate-400'} text-xs">
@@ -444,7 +463,7 @@
 
             if (filtered.length > MAX_RENDER) {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td colspan="4" class="px-6 py-4 text-center text-slate-500 text-[10px] uppercase font-bold italic">Exibindo apenas os primeiros ${MAX_RENDER} resultados... Use a exportação para ver todos.</td>`;
+                tr.innerHTML = `<td colspan="6" class="px-6 py-4 text-center text-slate-500 text-[10px] uppercase font-bold italic">Exibindo apenas os primeiros ${MAX_RENDER} resultados... Use a exportação para ver todos.</td>`;
                 tbody.appendChild(tr);
             }
 
@@ -576,7 +595,7 @@
         function clearControlFile() {
             if(confirm("Remover lista de pessoas cadastradas?")) {
                 localStorage.removeItem(STORAGE_CONTROL);
-                allowedIds = new Set();
+                allowedIds = new Map();
                 document.getElementById('controlFileName').innerText = "Importar";
                 document.getElementById('controlDetails').classList.add('hidden');
                 document.getElementById('toggleControlFilter').checked = false;
@@ -598,6 +617,8 @@
                 const ws = XLSX.utils.json_to_sheet(data.map(p => ({
                     "ID": p.id,
                     "Nome": p.nome,
+                    "Departamento": p.dept || '---',
+                    "Telefone": p.phone || '---',
                     "Última Presença": p.dt ? p.dt.toLocaleString('pt-PT') : 'Sem registro',
                     "Dias de Ausência": p.diff === null ? '---' : p.diff
                 })));
@@ -620,18 +641,33 @@
                 try {
                     const wb = XLSX.read(ev.target.result, {type: 'binary'});
                     const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
-                    const ids = json.slice(1).map(row => String(row[0]||"").trim()).filter(x => x && x.toLowerCase() !== "id pessoal");
 
-                    if (ids.length === 0) {
+                    const tempMap = new Map();
+                    // Assumindo: A=ID (0), E=Dept (4), H=Telefone (7)
+                    for (let i = 1; i < json.length; i++) {
+                        const row = json[i];
+                        const id = String(row[0] || "").trim();
+                        if (id && id.toLowerCase() !== "id pessoal") {
+                            tempMap.set(id, {
+                                dept: String(row[4] || "").trim(),
+                                phone: String(row[7] || "").trim()
+                            });
+                        }
+                    }
+
+                    if (tempMap.size === 0) {
                         showToast("Nenhum ID encontrado no ficheiro de controle", "error");
                     } else {
-                        allowedIds = new Set(ids);
-                        localStorage.setItem(STORAGE_CONTROL, JSON.stringify({ name: f.name, ids: Array.from(allowedIds) }));
+                        allowedIds = tempMap;
+                        localStorage.setItem(STORAGE_CONTROL, JSON.stringify({
+                            name: f.name,
+                            ids: Object.fromEntries(allowedIds)
+                        }));
                         document.getElementById('controlFileName').innerText = f.name;
                         document.getElementById('controlDetails').classList.remove('hidden');
                         document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
                         updateStateAndUI();
-                        showToast(`${ids.length} IDs carregados com sucesso`);
+                        showToast(`${allowedIds.size} IDs carregados com sucesso`);
                     }
                 } catch (err) {
                     console.error("Erro ao processar ficheiro de controle:", err);
