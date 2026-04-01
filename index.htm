@@ -162,6 +162,7 @@
         const STORAGE_FILES = 'office_attendance_files_v2';
         const STORAGE_CONTROL = 'office_attendance_control_v2';
         let db, loadedFiles = [], allRawRecords = [], allowedIds = new Set(), coveredDates = new Set();
+        window.groupedPeopleCache = [];
 
         let currentCalendarDate = new Date();
 
@@ -198,14 +199,21 @@
         };
 
         async function loadLocalData() {
-            loadedFiles = JSON.parse(localStorage.getItem(STORAGE_FILES) || '[]');
-            const ctrl = JSON.parse(localStorage.getItem(STORAGE_CONTROL) || 'null');
-            if(ctrl) {
-                allowedIds = new Set(ctrl.ids);
-                document.getElementById('controlFileName').innerText = ctrl.name;
-                document.getElementById('controlDetails').classList.remove('hidden');
-                document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
+            try {
+                loadedFiles = JSON.parse(localStorage.getItem(STORAGE_FILES) || '[]');
+                const ctrl = JSON.parse(localStorage.getItem(STORAGE_CONTROL) || 'null');
+                if(ctrl) {
+                    allowedIds = new Set(ctrl.ids);
+                    document.getElementById('controlFileName').innerText = ctrl.name;
+                    document.getElementById('controlDetails').classList.remove('hidden');
+                    document.getElementById('controlCountText').innerText = `${allowedIds.size} IDs`;
+                }
+            } catch (err) {
+                console.error("Erro ao carregar localStorage:", err);
+                loadedFiles = [];
+                allowedIds = new Set();
             }
+
             if (db) {
                 allRawRecords = await new Promise(res => {
                     const tx = db.transaction(['records'], 'readonly');
@@ -227,26 +235,27 @@
 
             loader.classList.replace('hidden', 'flex');
             progressFill.style.width = '0%';
-            progressInfo.innerText = "Lendo arquivos...";
+            progressInfo.innerText = "Iniciando processamento...";
 
             let completed = 0;
             const newFilesMetadata = [];
             const allNewData = [];
 
             try {
-                await Promise.all(fileArray.map(async (file) => {
+                for (const file of fileArray) {
+                    progressInfo.innerText = `Lendo: ${file.name} (${completed + 1}/${fileArray.length})`;
                     const data = await parseExcelFast(file);
                     if (data.length > 0) {
                         const fileId = 'f' + Date.now() + Math.random().toString(16).slice(2,8);
                         newFilesMetadata.push({ id: fileId, name: file.name });
-                        data.forEach(item => {
-                            item.file_id = fileId;
-                            allNewData.push(item);
-                        });
+                        for (let i = 0; i < data.length; i++) {
+                            data[i].file_id = fileId;
+                            allNewData.push(data[i]);
+                        }
                     }
                     completed++;
                     progressFill.style.width = `${(completed / fileArray.length) * 100}%`;
-                }));
+                }
 
                 if (allNewData.length > 0) {
                     progressInfo.innerText = `Gravando ${allNewData.length} registros...`;
@@ -310,13 +319,25 @@
         }
 
         async function bulkInsertRecords(records) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['records'], 'readwrite');
-                const store = transaction.objectStore('records');
-                records.forEach(r => store.add(r));
-                transaction.oncomplete = () => resolve();
-                transaction.onerror = reject;
-            });
+            const CHUNK_SIZE = 2000;
+            const progressFill = document.getElementById('progressBarFill');
+            const progressInfo = document.getElementById('progressInfo');
+
+            for (let i = 0; i < records.length; i += CHUNK_SIZE) {
+                const chunk = records.slice(i, i + CHUNK_SIZE);
+                await new Promise((resolve, reject) => {
+                    const transaction = db.transaction(['records'], 'readwrite');
+                    const store = transaction.objectStore('records');
+                    chunk.forEach(r => store.add(r));
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = reject;
+                });
+                const progress = Math.min(100, Math.round(((i + chunk.length) / records.length) * 100));
+                progressFill.style.width = `${progress}%`;
+                progressInfo.innerText = `Gravando: ${i + chunk.length} de ${records.length}`;
+                // Pequena pausa para manter a UI responsiva
+                await new Promise(r => setTimeout(r, 0));
+            }
         }
 
         function normalizeText(text) {
@@ -325,10 +346,44 @@
 
         function updateStateAndUI() {
             coveredDates.clear();
-            allRawRecords.forEach(r => {
+            const personMap = new Map();
+            const now = new Date();
+
+            // Passagem Única sobre allRawRecords
+            for (let i = 0; i < allRawRecords.length; i++) {
+                const r = allRawRecords[i];
                 const d = new Date(r.timestamp);
+
+                // 1. Preencher coveredDates
                 const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
                 coveredDates.add(key);
+
+                // 2. Preencher personMap
+                const id = String(r.personal_id).trim();
+                if(!personMap.has(id) || d > personMap.get(id).dt) {
+                    personMap.set(id, {
+                        id, dt: d,
+                        nome: `${r.first_name} ${r.last_name}`.trim()
+                    });
+                }
+            }
+
+            // Pós-processamento de personMap (Diff de datas feito apenas uma vez por pessoa)
+            personMap.forEach(p => {
+                p.diff = Math.floor(Math.abs(now - p.dt) / (1000*60*60*24));
+            });
+
+            // Adicionar pessoas cadastradas que não possuem registros
+            allowedIds.forEach(id => {
+                const idStr = String(id).trim();
+                if (!personMap.has(idStr)) {
+                    personMap.set(idStr, {
+                        id: idStr,
+                        dt: null,
+                        nome: "ID: " + idStr,
+                        diff: null
+                    });
+                }
             });
 
             const container = document.getElementById('fileListContainer');
@@ -344,33 +399,6 @@
             } else {
                 document.getElementById('fileListSection').classList.add('hidden');
             }
-
-            const personMap = new Map();
-            const now = new Date();
-            allRawRecords.forEach(r => {
-                const id = String(r.personal_id).trim();
-                const d = new Date(r.timestamp);
-                if(!personMap.has(id) || d > personMap.get(id).dt) {
-                    personMap.set(id, {
-                        id, dt: d,
-                        nome: `${r.first_name} ${r.last_name}`.trim(),
-                        diff: Math.floor(Math.abs(now - d) / (1000*60*60*24))
-                    });
-                }
-            });
-
-            // Adicionar pessoas cadastradas que não possuem registros
-            allowedIds.forEach(id => {
-                const idStr = String(id).trim();
-                if (!personMap.has(idStr)) {
-                    personMap.set(idStr, {
-                        id: idStr,
-                        dt: null,
-                        nome: "ID: " + idStr,
-                        diff: null
-                    });
-                }
-            });
 
             window.groupedPeopleCache = Array.from(personMap.values()).sort((a,b) => (b.dt || 0) - (a.dt || 0));
 
@@ -398,8 +426,11 @@
             document.getElementById('statUnique').innerText = filtered.length;
             document.getElementById('statTotal').innerText = allRawRecords.length;
 
+            const MAX_RENDER = 1000;
+            const toRender = filtered.slice(0, MAX_RENDER);
+
             const tbody = document.getElementById('dataTableBody');
-            tbody.innerHTML = filtered.map(p => `
+            tbody.innerHTML = toRender.map(p => `
                 <tr class="hover:bg-slate-700/30 border-slate-700 border-b last:border-0">
                     <td class="px-6 py-4 font-mono text-[11px] text-slate-500">${p.id}</td>
                     <td class="px-6 py-4 font-bold text-slate-100">${p.nome}</td>
@@ -410,6 +441,12 @@
                         </span>
                     </td>
                 </tr>`).join('');
+
+            if (filtered.length > MAX_RENDER) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="4" class="px-6 py-4 text-center text-slate-500 text-[10px] uppercase font-bold italic">Exibindo apenas os primeiros ${MAX_RENDER} resultados... Use a exportação para ver todos.</td>`;
+                tbody.appendChild(tr);
+            }
 
             const hasData = allRawRecords.length > 0 || allowedIds.size > 0;
             ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.toggle('hidden', !hasData));
@@ -548,11 +585,30 @@
         }
 
         function exportToExcel() {
-            const data = getFilteredData();
-            const ws = XLSX.utils.json_to_sheet(data.map(p => ({ "ID": p.id, "Nome": p.nome, "Última Presença": p.dt, "Dias de Ausência": p.diff })));
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Relatório");
-            XLSX.writeFile(wb, "Relatorio_Presenca.xlsx");
+            try {
+                if (typeof XLSX === 'undefined') {
+                    showToast("Erro: Biblioteca de exportação não carregada.", "error");
+                    return;
+                }
+                const data = getFilteredData();
+                if (data.length === 0) {
+                    showToast("Não há dados para exportar.", "error");
+                    return;
+                }
+                const ws = XLSX.utils.json_to_sheet(data.map(p => ({
+                    "ID": p.id,
+                    "Nome": p.nome,
+                    "Última Presença": p.dt ? p.dt.toLocaleString('pt-PT') : 'Sem registro',
+                    "Dias de Ausência": p.diff === null ? '---' : p.diff
+                })));
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+                XLSX.writeFile(wb, "Relatorio_Presenca.xlsx");
+                showToast("Relatório exportado com sucesso!");
+            } catch (err) {
+                console.error("Erro na exportação:", err);
+                showToast("Erro ao exportar ficheiro Excel", "error");
+            }
         }
 
         document.getElementById('searchInput').oninput = applySearch;
