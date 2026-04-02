@@ -172,7 +172,6 @@
         const STORAGE_FILES = 'office_attendance_files_v2';
         const STORAGE_CONTROL = 'office_attendance_control_v2';
         let db, loadedFiles = [], allRawRecords = [], allowedIds = new Map(), coveredDates = new Set();
-        let currentDisplayLimit = 1000;
         window.groupedPeopleCache = [];
 
         let currentCalendarDate = new Date();
@@ -450,22 +449,14 @@
             });
         }
 
-        function loadMore() {
-            currentDisplayLimit += 1000;
-            applySearch(false);
-        }
-
-        function applySearch(resetLimit = true) {
-            if (resetLimit) currentDisplayLimit = 1000;
+        function applySearch() {
             const filtered = getFilteredData();
 
             document.getElementById('statUnique').innerText = filtered.length;
             document.getElementById('statTotal').innerText = allRawRecords.length;
 
-            const toRender = filtered.slice(0, currentDisplayLimit);
-
             const tbody = document.getElementById('dataTableBody');
-            tbody.innerHTML = toRender.map(p => `
+            tbody.innerHTML = filtered.map(p => `
                 <tr class="hover:bg-slate-700/30 border-slate-700 border-b last:border-0">
                     <td class="px-6 py-4 font-mono text-slate-500">${p.id}</td>
                     <td class="px-6 py-4 font-bold text-slate-100">${p.nome}</td>
@@ -478,19 +469,6 @@
                         </span>
                     </td>
                 </tr>`).join('');
-
-            if (filtered.length > currentDisplayLimit) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td colspan="6" class="px-6 py-8 text-center">
-                    <p class="text-slate-500 text-[10px] uppercase font-bold italic mb-4">
-                        Exibindo os primeiros ${currentDisplayLimit} de ${filtered.length} resultados
-                    </p>
-                    <button onclick="loadMore()" class="bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 rounded-lg transition-all">
-                        Carregar mais 1000 resultados
-                    </button>
-                </td>`;
-                tbody.appendChild(tr);
-            }
 
             const hasData = allRawRecords.length > 0 || allowedIds.size > 0;
             ['statsSection', 'tableContainer', 'searchContainer'].forEach(id => document.getElementById(id).classList.toggle('hidden', !hasData));
