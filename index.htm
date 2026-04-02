@@ -173,6 +173,7 @@
         const STORAGE_CONTROL = 'office_attendance_control_v2';
         let db, loadedFiles = [], allRawRecords = [], allowedIds = new Map(), coveredDates = new Set();
         window.groupedPeopleCache = [];
+        let currentDisplayLimit = 1000;
 
         let currentCalendarDate = new Date();
 
@@ -449,14 +450,20 @@
             });
         }
 
-        function applySearch() {
+        function loadMore() {
+            currentDisplayLimit += 1000;
+            applySearch(false); // Não reseta o scroll ou o limite
+        }
+
+        function applySearch(resetLimit = true) {
+            if (resetLimit) currentDisplayLimit = 1000;
+
             const filtered = getFilteredData();
 
             document.getElementById('statUnique').innerText = filtered.length;
             document.getElementById('statTotal').innerText = allRawRecords.length;
 
-            const MAX_RENDER = 1000;
-            const toRender = filtered.slice(0, MAX_RENDER);
+            const toRender = filtered.slice(0, currentDisplayLimit);
 
             const tbody = document.getElementById('dataTableBody');
             tbody.innerHTML = toRender.map(p => `
@@ -473,9 +480,14 @@
                     </td>
                 </tr>`).join('');
 
-            if (filtered.length > MAX_RENDER) {
+            if (filtered.length > currentDisplayLimit) {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td colspan="6" class="px-6 py-4 text-center text-slate-500 text-[10px] uppercase font-bold italic">Exibindo apenas os primeiros ${MAX_RENDER} resultados... Use a exportação para ver todos.</td>`;
+                tr.innerHTML = `<td colspan="6" class="px-6 py-4 text-center">
+                    <button onclick="loadMore()" class="my-2 px-6 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all border border-slate-600">
+                        Carregar mais ${Math.min(1000, filtered.length - currentDisplayLimit)} de ${filtered.length - currentDisplayLimit} resultados...
+                    </button>
+                    <p class="text-slate-500 text-[9px] uppercase font-bold italic mt-1">Dica: Use a exportação para ver todos de uma vez no Excel.</p>
+                </td>`;
                 tbody.appendChild(tr);
             }
 
