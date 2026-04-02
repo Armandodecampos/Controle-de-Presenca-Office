@@ -172,6 +172,7 @@
         const STORAGE_FILES = 'office_attendance_files_v2';
         const STORAGE_CONTROL = 'office_attendance_control_v2';
         let db, loadedFiles = [], allRawRecords = [], allowedIds = new Map(), coveredDates = new Set();
+        let currentDisplayLimit = 1000;
         window.groupedPeopleCache = [];
 
         let currentCalendarDate = new Date();
@@ -449,14 +450,19 @@
             });
         }
 
-        function applySearch() {
+        function loadMore() {
+            currentDisplayLimit += 1000;
+            applySearch(false);
+        }
+
+        function applySearch(resetLimit = true) {
+            if (resetLimit) currentDisplayLimit = 1000;
             const filtered = getFilteredData();
 
             document.getElementById('statUnique').innerText = filtered.length;
             document.getElementById('statTotal').innerText = allRawRecords.length;
 
-            const MAX_RENDER = 1000;
-            const toRender = filtered.slice(0, MAX_RENDER);
+            const toRender = filtered.slice(0, currentDisplayLimit);
 
             const tbody = document.getElementById('dataTableBody');
             tbody.innerHTML = toRender.map(p => `
@@ -473,9 +479,16 @@
                     </td>
                 </tr>`).join('');
 
-            if (filtered.length > MAX_RENDER) {
+            if (filtered.length > currentDisplayLimit) {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td colspan="6" class="px-6 py-4 text-center text-slate-500 text-[10px] uppercase font-bold italic">Exibindo apenas os primeiros ${MAX_RENDER} resultados... Use a exportação para ver todos.</td>`;
+                tr.innerHTML = `<td colspan="6" class="px-6 py-8 text-center">
+                    <p class="text-slate-500 text-[10px] uppercase font-bold italic mb-4">
+                        Exibindo os primeiros ${currentDisplayLimit} de ${filtered.length} resultados
+                    </p>
+                    <button onclick="loadMore()" class="bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 rounded-lg transition-all">
+                        Carregar mais 1000 resultados
+                    </button>
+                </td>`;
                 tbody.appendChild(tr);
             }
 
