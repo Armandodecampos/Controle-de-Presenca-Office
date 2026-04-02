@@ -92,15 +92,15 @@
 
                 <div id="tableContainer" class="hidden flex-1 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden flex flex-col">
                     <div class="flex-1 overflow-auto custom-scrollbar">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="bg-slate-900/50 text-slate-500 text-sm uppercase tracking-wider">
+                        <table class="w-full text-left border-collapse relative">
+                            <thead class="sticky top-0 z-10 bg-slate-900 text-slate-500 text-sm uppercase tracking-wider">
                                 <tr>
                                     <th class="px-6 py-4">ID Pessoal</th>
                                     <th class="px-6 py-4">Nome Completo</th>
                                     <th class="px-6 py-4">Departamento</th>
                                     <th class="px-6 py-4">Telefone</th>
                                     <th class="px-6 py-4">Último Registro</th>
-                                    <th class="px-6 py-4 text-center">Ausência</th>
+                                    <th class="px-6 py-4 text-center">Ausência em dias</th>
                                 </tr>
                             </thead>
                             <tbody id="dataTableBody" class="divide-y divide-slate-700 text-sm"></tbody>
@@ -465,7 +465,7 @@
                     <td class="px-6 py-4 text-slate-400">${p.dt ? p.dt.toLocaleString('pt-PT') : '---'}</td>
                     <td class="px-6 py-4 text-center">
                         <span class="${(p.diff === null || p.diff > 7) ? 'text-red-400' : 'text-slate-400'}">
-                            ${p.diff === null ? 'Sem registro' : (p.diff === 0 ? '0' : (p.diff === 1 ? '1 dia' : p.diff + ' dias'))}
+                            ${p.diff === null ? '' : p.diff}
                         </span>
                     </td>
                 </tr>`).join('');
@@ -623,7 +623,7 @@
                     "Departamento": p.dept || '---',
                     "Telefone": p.phone || '---',
                     "Última Presença": p.dt ? p.dt.toLocaleString('pt-PT') : 'Sem registro',
-                    "Dias de Ausência": p.diff === null ? '---' : p.diff
+                    "Ausência em dias": p.diff === null ? '' : p.diff
                 })));
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Relatório");
